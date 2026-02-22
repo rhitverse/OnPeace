@@ -228,21 +228,12 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
       child: Column(
         children: [
           const SizedBox(height: 16),
-          Container(
-            width: 36,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.white24,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 10),
           Expanded(
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 20),
               itemCount: cameraFilters.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 14),
+              separatorBuilder: (_, _) => const SizedBox(width: 14),
               itemBuilder: (_, i) {
                 return Filter(
                   filter: cameraFilters[i],

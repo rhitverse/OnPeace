@@ -4,25 +4,19 @@ import 'package:flutter_svg/svg.dart';
 import 'package:whatsapp_clone/colors.dart';
 
 class CameraBottomBar extends StatelessWidget {
-  final bool isRecording;
   final bool isTakingPhoto;
   final bool isSwitching;
   final Animation<double> shutterAnimation;
   final VoidCallback onShutterTap;
-  final VoidCallback onLongPressStart;
-  final VoidCallback onLongPressEnd;
   final VoidCallback onFilterTap;
   final VoidCallback onFlipTap;
 
   const CameraBottomBar({
     super.key,
-    required this.isRecording,
     required this.isTakingPhoto,
     required this.isSwitching,
     required this.shutterAnimation,
     required this.onShutterTap,
-    required this.onLongPressStart,
-    required this.onLongPressEnd,
     required this.onFilterTap,
     required this.onFlipTap,
   });
@@ -94,8 +88,6 @@ class CameraBottomBar extends StatelessWidget {
             bottom: barHeight - shutterRaise,
             child: GestureDetector(
               onTap: onShutterTap,
-              onLongPressStart: (_) => onLongPressStart(),
-              onLongPressEnd: (_) => onLongPressEnd(),
               child: ScaleTransition(
                 scale: shutterAnimation,
                 child: AnimatedContainer(
@@ -104,14 +96,10 @@ class CameraBottomBar extends StatelessWidget {
                   height: shutterSize,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isRecording
-                        ? Colors.red.withOpacity(0.2)
-                        : Colors.white.withOpacity(0.18),
-                    border: Border.all(
-                      color: isRecording ? Colors.red : whiteColor,
-                      width: 4.4,
-                    ),
+                    color: Colors.white.withOpacity(0.18),
+                    border: Border.all(color: whiteColor, width: 4.4),
                   ),
+
                   child: Center(
                     child: isTakingPhoto
                         ? const CircularProgressIndicator(
@@ -120,13 +108,11 @@ class CameraBottomBar extends StatelessWidget {
                           )
                         : AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
-                            width: isRecording ? 26 : 64,
-                            height: isRecording ? 26 : 64,
+                            width: 64,
+                            height: 64,
                             decoration: BoxDecoration(
-                              color: isRecording ? Colors.red : Colors.white,
-                              borderRadius: isRecording
-                                  ? BorderRadius.circular(20)
-                                  : BorderRadius.circular(31),
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(31),
                             ),
                           ),
                   ),

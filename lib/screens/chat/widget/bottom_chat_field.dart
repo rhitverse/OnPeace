@@ -24,8 +24,38 @@ class BottomChatField extends StatefulWidget {
   State<BottomChatField> createState() => _BottomChatFieldState();
 }
 
-class _BottomChatFieldState extends State<BottomChatField> {
+class _BottomChatFieldState extends State<BottomChatField>
+    with SingleTickerProviderStateMixin {
   final ScrollController _emojiScrollController = ScrollController();
+  bool _showAttachment = false;
+  late AnimationController _animController;
+  late Animation<double> _fadeAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    );
+    _fadeAnim = CurvedAnimation(
+      parent: _animController,
+      curve: Curves.easeInOut,
+    );
+  }
+
+  void _toggleAttachment() {
+    setState(() {
+      _showAttachment = !_showAttachment;
+      if (_showAttachment) {
+        widget.focusNode.unfocus();
+        _animController.forward();
+      } else {
+        _animController.reverse();
+      }
+    });
+  }
+
   double _emojiHeight(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     final padding = MediaQuery.of(context).padding;
@@ -48,6 +78,91 @@ class _BottomChatFieldState extends State<BottomChatField> {
     super.dispose();
   }
 
+  Widget _attachmentItem({
+    required String svgPath,
+    required String label,
+    Color? svgColor,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 68,
+            height: 64,
+            decoration: BoxDecoration(
+              color: attacment,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: SvgPicture.asset(
+              svgPath,
+              width: 32,
+              height: 32,
+              colorFilter: svgColor != null
+                  ? ColorFilter.mode(svgColor, BlendMode.srcIn)
+                  : null,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white70, fontSize: 11),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAttachmentPanel() {
+    return FadeTransition(
+      opacity: _fadeAnim,
+      child: SizeTransition(
+        sizeFactor: _fadeAnim,
+        axisAlignment: 1.0,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          decoration: BoxDecoration(color: backgroundColor),
+          child: Wrap(
+            spacing: 30,
+            runSpacing: 20,
+            alignment: WrapAlignment.start,
+            children: [
+              _attachmentItem(
+                svgPath: 'assets/svg/photos.svg',
+                label: 'Gallery',
+                onTap: () => showAttachmentSheet(context),
+              ),
+              _attachmentItem(
+                svgPath: 'assets/svg/file.svg',
+                label: 'File',
+                onTap: () {},
+              ),
+              _attachmentItem(
+                svgPath: 'assets/svg/location.svg',
+                label: 'Location',
+                onTap: () {},
+              ),
+              _attachmentItem(
+                svgPath: 'assets/svg/poll.svg',
+                label: 'Poll',
+                svgColor: Color(0xffFF8314),
+                onTap: () {},
+              ),
+              _attachmentItem(
+                svgPath: 'assets/svg/diary.svg',
+                label: 'Diary',
+                onTap: () {},
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -62,15 +177,29 @@ class _BottomChatFieldState extends State<BottomChatField> {
             ),
           ),
           child: SafeArea(
-            bottom: !widget.showEmoji,
+            bottom: !widget.showEmoji && !_showAttachment,
             child: Row(
               children: [
                 GestureDetector(
-                  onTap: () => showAttachmentSheet(context),
-                  child: CircleAvatar(
-                    backgroundColor: Colors.grey[900],
-                    radius: 24,
-                    child: const Icon(Icons.add, color: Colors.white, size: 27),
+                  onTap: _toggleAttachment,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    transitionBuilder: (child, anim) => RotationTransition(
+                      turns: Tween(begin: 0.75, end: 1.0).animate(anim),
+                      child: FadeTransition(opacity: anim, child: child),
+                    ),
+                    child: CircleAvatar(
+                      key: ValueKey(_showAttachment),
+                      backgroundColor: _showAttachment
+                          ? Colors.grey[900]
+                          : Colors.grey[900],
+                      radius: 24,
+                      child: Icon(
+                        _showAttachment ? Icons.close : Icons.add,
+                        color: Colors.white,
+                        size: 27,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -88,6 +217,14 @@ class _BottomChatFieldState extends State<BottomChatField> {
                       style: const TextStyle(color: Colors.white),
                       maxLines: null,
                       textInputAction: TextInputAction.newline,
+                      onTap: () {
+                        if (_showAttachment) {
+                          setState(() {
+                            _showAttachment = false;
+                            _animController.reverse();
+                          });
+                        }
+                      },
                       onSubmitted: (_) => widget.onSend(),
                       decoration: InputDecoration(
                         hintText: 'Type your message...',
@@ -148,6 +285,7 @@ class _BottomChatFieldState extends State<BottomChatField> {
             ),
           ),
         ),
+        if (_showAttachment) _buildAttachmentPanel(),
         if (widget.showEmoji)
           SizedBox(
             height: _emojiHeight(context),

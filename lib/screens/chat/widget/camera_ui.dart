@@ -27,11 +27,7 @@ class _CameraUiState extends State<CameraUi>
   bool _camReady = false;
   bool _isTakingPhoto = false;
   bool _isSwitching = false;
-  int _cameraInitId = 0;
   bool _frontFlashActive = false;
-  bool _isRecording = false;
-  int _recordSeconds = 0;
-  Timer? _recordTimer;
 
   double _currentZoom = 1.0;
   double _baseZoom = 1.0;
@@ -41,71 +37,62 @@ class _CameraUiState extends State<CameraUi>
   int _selectedFilterIndex = 0;
 
   final AudioPlayer _audioPlayer = AudioPlayer();
+
   @override
   void initState() {
     super.initState();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+
     _shutterController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 150),
     );
+
     _shutterAnimation = Tween<double>(begin: 1.0, end: 0.85).animate(
       CurvedAnimation(parent: _shutterController, curve: Curves.easeInOut),
     );
+
     _initCamera(front: false);
   }
 
   Future<void> _initCamera({required bool front}) async {
     if (!mounted) return;
-    final initId = ++_cameraInitId;
+
     setState(() {
       _camReady = false;
       _camController = null;
     });
-    final oldController = _camController;
-    await oldController?.dispose();
-    await Future.delayed(const Duration(milliseconds: 300));
-    if (initId != _cameraInitId || !mounted) return;
+
+    await _camController?.dispose();
+
     if (_cameras.isEmpty) {
       _cameras = await availableCameras();
     }
-    if (_cameras.isEmpty) return;
-    if (initId != _cameraInitId || !mounted) return;
+
     final desc = _cameras.firstWhere(
       (c) =>
           c.lensDirection ==
           (front ? CameraLensDirection.front : CameraLensDirection.back),
       orElse: () => _cameras.first,
     );
+
     final controller = CameraController(
       desc,
       ResolutionPreset.high,
-      enableAudio: true,
+      enableAudio: false,
       imageFormatGroup: ImageFormatGroup.jpeg,
     );
-    try {
-      await controller.initialize();
-      if (initId != _cameraInitId || !mounted) {
-        await controller.dispose();
-        return;
-      }
-      if (!front) {
-        try {
-          await controller.setFlashMode(_flashMode);
-          _minZoom = await controller.getMinZoomLevel();
-          _maxZoom = await controller.getMaxZoomLevel();
-          _currentZoom = _minZoom;
-        } catch (_) {}
-      }
-    } catch (e) {
-      debugPrint('Camera init error: $e');
-      await controller.dispose();
-      return;
+
+    await controller.initialize();
+
+    if (!front) {
+      _minZoom = await controller.getMinZoomLevel();
+      _maxZoom = await controller.getMaxZoomLevel();
+      _currentZoom = _minZoom;
     }
-    if (initId != _cameraInitId || !mounted) {
-      await controller.dispose();
-      return;
-    }
+
+    if (!mounted) return;
+
     setState(() {
       _camController = controller;
       _isFrontCamera = front;
@@ -114,10 +101,12 @@ class _CameraUiState extends State<CameraUi>
   }
 
   Future<void> _flipCamera() async {
-    if (_isSwitching || _isRecording) return;
+    if (_isSwitching) return;
     _isSwitching = true;
+
     _isFrontCamera = !_isFrontCamera;
     await _initCamera(front: _isFrontCamera);
+
     _isSwitching = false;
   }
 
@@ -185,20 +174,19 @@ class _CameraUiState extends State<CameraUi>
   }
 
   Future<void> _onShutterTap() async {
-    if (_isRecording) {
-      await _stopRecording();
-      return;
-    }
-    if (_isTakingPhoto || _isRecording || !_camReady || _camController == null)
-      return;
+    if (_isTakingPhoto || !_camReady || _camController == null) return;
+
     HapticFeedback.mediumImpact();
     setState(() => _isTakingPhoto = true);
+
     await _shutterController.forward();
     await _shutterController.reverse();
+
     try {
       final XFile file = await _camController!.takePicture();
 
       await _audioPlayer.play(AssetSource('assets/audio/shutter.mp3'));
+
       if (mounted) Navigator.of(context).pop(file.path);
     } catch (e) {
       debugPrint('Capture error: $e');
@@ -207,52 +195,12 @@ class _CameraUiState extends State<CameraUi>
     }
   }
 
-  Future<void> _startRecording() async {
-    if (_isTakingPhoto || _isRecording || !_camReady || _camController == null)
-      return;
-    HapticFeedback.heavyImpact();
-    try {
-      await _camController!.startVideoRecording();
-      setState(() {
-        _isRecording = true;
-        _recordSeconds = 0;
-      });
-      _recordTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (mounted) setState(() => _recordSeconds++);
-      });
-    } catch (e) {
-      debugPrint('Record start error:$e');
-    }
-  }
-
-  Future<void> _stopRecording() async {
-    if (!_isRecording || _camController == null) return;
-    _recordTimer?.cancel();
-    HapticFeedback.mediumImpact();
-    try {
-      final XFile file = await _camController!.stopVideoRecording();
-      setState(() => _isRecording = false);
-      if (mounted)
-        Navigator.of(context).pop({'type': 'video', 'path': file.path});
-    } catch (e) {
-      debugPrint('Record stop error: $e');
-      setState(() => _isRecording = false);
-    }
-  }
-
-  String get _recordDuration {
-    final m = (_recordSeconds ~/ 60).toString().padLeft(2, '0');
-    final s = (_recordSeconds % 60).toString().padLeft(2, '0');
-    return '$m:$s';
-  }
-
   @override
   void dispose() {
     ScreenBrightness().resetScreenBrightness();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _camController?.dispose();
     _shutterController.dispose();
-    _recordTimer?.cancel();
     _audioPlayer.dispose();
     super.dispose();
   }
@@ -273,53 +221,16 @@ class _CameraUiState extends State<CameraUi>
             right: 0,
             child: _buildTopBar(),
           ),
-
-          if (_isRecording)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 60,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.circle, color: whiteColor, size: 10),
-                      const SizedBox(width: 6),
-                      Text(
-                        _recordDuration,
-                        style: const TextStyle(
-                          color: whiteColor,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
           Positioned(
             bottom: MediaQuery.of(context).padding.bottom + 0,
             left: 0,
             right: 0,
             child: CameraBottomBar(
-              isRecording: _isRecording,
               isTakingPhoto: _isTakingPhoto,
               isSwitching: _isSwitching,
               shutterAnimation: _shutterAnimation,
               onShutterTap: _onShutterTap,
-              onLongPressStart: _startRecording,
-              onLongPressEnd: () {},
+
               onFilterTap: _showFilterSheet,
               onFlipTap: _flipCamera,
             ),
