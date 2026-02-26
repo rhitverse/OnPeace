@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:whatsapp_clone/common/encryption/encryption_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 
 class ChatRepository {
   final FirebaseFirestore _firestore;
@@ -121,6 +122,8 @@ class ChatRepository {
 
     for (final doc in snapshot.docs) {
       final data = doc.data();
+
+      if (data['senderId'] == currentUserId) continue;
       String text = '';
 
       if (data.containsKey('encryptedText')) {
@@ -172,30 +175,10 @@ class ChatRepository {
     required String text,
     required String receiverId,
   }) async {
-    final receiverDoc = await _firestore
-        .collection('users')
-        .doc(receiverId)
-        .get();
-    final publicKey = receiverDoc.data()?['publicKey'];
-    String encryptedText = text;
-    if (publicKey != null) {
-      encryptedText = await _encryption.encryptMessage(text, publicKey);
-    }
-    final docRef = await _firestore
-        .collection('Chats')
-        .doc(chatId)
-        .collection('messages')
-        .add({
-          'senderId': senderId,
-          'receiverId': receiverId,
-          'encryptedText': encryptedText,
-          'isRead': false,
-          'time': FieldValue.serverTimestamp(),
-        });
-
+    final tempId = DateTime.now().millisecondsSinceEpoch.toString();
     await _saveMessageLocally(
       chatId: chatId,
-      id: docRef.id,
+      id: tempId,
       text: text,
       senderId: senderId,
       receiverId: receiverId,
@@ -207,15 +190,62 @@ class ChatRepository {
       text: text,
       senderId: senderId,
     );
-
     await _refreshStream(chatId);
 
-    await _firestore.collection('Chats').doc(chatId).update({
-      'lastMessage': '🔒 Message',
-      'lastMessageTime': FieldValue.serverTimestamp(),
-      'lastMessageSenderId': senderId,
-      'unreadCount_$receiverId': FieldValue.increment(1),
-    });
+    _sendToFirestore(
+      chatId: chatId,
+      senderId: senderId,
+      text: text,
+      receiverId: receiverId,
+      tempId: tempId,
+    );
+  }
+
+  Future<void> _sendToFirestore({
+    required String chatId,
+    required String senderId,
+    required String text,
+    required String receiverId,
+    required String tempId,
+  }) async {
+    try {
+      final receiverDoc = await _firestore
+          .collection('users')
+          .doc(receiverId)
+          .get();
+      final publicKey = receiverDoc.data()?['publicKey'];
+      String encryptedText = text;
+      if (publicKey != null) {
+        encryptedText = await _encryption.encryptMessage(text, publicKey);
+      }
+      final docRef = await _firestore
+          .collection('Chats')
+          .doc(chatId)
+          .collection('messages')
+          .add({
+            'senderId': senderId,
+            'receiverId': receiverId,
+            'encryptedText': encryptedText,
+            'isRead': false,
+            'time': FieldValue.serverTimestamp(),
+          });
+      final messages = await loadLocalMessages(chatId);
+      final idx = messages.indexWhere((m) => m['id'] == tempId);
+      if (idx != -1) {
+        messages[idx]['id'] = docRef.id;
+        final file = await _getChatFile(chatId);
+        await file.writeAsString(jsonEncode(messages));
+      }
+
+      _firestore.collection('Chats').doc(chatId).update({
+        'lastMessage': '🔒 Message',
+        'lastMessageTime': FieldValue.serverTimestamp(),
+        'lastMessageSenderId': senderId,
+        'unreadCount_$receiverId': FieldValue.increment(1),
+      });
+    } catch (e) {
+      debugPrint('Firestore send error: $e');
+    }
   }
 
   Stream<List<Map<String, dynamic>>> getLocalMessagesStream(String chatId) {

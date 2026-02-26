@@ -12,9 +12,17 @@ class UserSearch extends StatefulWidget {
   State<UserSearch> createState() => _UserSearchState();
 }
 
+enum AddButtonState { idle, loading, sent, chat }
+
 class _UserSearchState extends State<UserSearch> {
   final TextEditingController searchController = TextEditingController();
   String searchText = "";
+  AddButtonState _buttonState = AddButtonState.idle;
+
+  String? _foundReceiverUid;
+  String? _foundDisplayName;
+  String? _foundProfilePic;
+  String? _foundChatId;
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +68,8 @@ class _UserSearchState extends State<UserSearch> {
                 onChanged: (value) {
                   setState(() {
                     searchText = value.trim().toLowerCase();
+                    _buttonState = AddButtonState.idle;
+                    _foundReceiverUid = null;
                   });
                 },
               ),
@@ -127,44 +137,11 @@ class _UserSearchState extends State<UserSearch> {
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              SizedBox(height: 4),
-                              Text(
-                                "@${user["username"] ?? ""}",
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 14,
-                                ),
-                              ),
                               SizedBox(height: 24),
-                              GestureDetector(
-                                onTap: () {
-                                  _navigateToChatScreen(
-                                    receiverUid: receiverUid,
-                                    displayName: user["displayname"] ?? "",
-                                    profilePic: user["profilePic"] ?? "",
-                                  );
-                                },
-                                child: Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 40,
-                                    vertical: 10,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                      color: uiColor,
-                                      width: 1.5,
-                                    ),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    "Add",
-                                    style: TextStyle(
-                                      color: uiColor,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
+                              _buildActionButton(
+                                receiverUid: receiverUid,
+                                displayName: user["displayname"] ?? "",
+                                profilePic: user["profilePic"] ?? "",
                               ),
                             ],
                           ),
@@ -178,44 +155,225 @@ class _UserSearchState extends State<UserSearch> {
     );
   }
 
-  Future<void> _navigateToChatScreen({
+  Widget _buildActionButton({
+    required String receiverUid,
+    required String displayName,
+    required String profilePic,
+  }) {
+    switch (_buttonState) {
+      case AddButtonState.idle:
+        return GestureDetector(
+          onTap: () => _onAddPressed(
+            receiverUid: receiverUid,
+            displayName: displayName,
+            profilePic: profilePic,
+          ),
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 40, vertical: 10),
+            decoration: BoxDecoration(
+              border: Border.all(color: uiColor, width: 1.5),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              "Add",
+              style: TextStyle(
+                color: uiColor,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        );
+      case AddButtonState.loading:
+        return Container(
+          padding: EdgeInsets.symmetric(horizontal: 40, vertical: 10),
+          decoration: BoxDecoration(
+            border: Border.all(color: uiColor, width: 1.5),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(color: uiColor, strokeWidth: 2),
+          ),
+        );
+      case AddButtonState.sent:
+        return Column(
+          children: [
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 40, vertical: 10),
+              decoration: BoxDecoration(
+                color: uiColor.withOpacity(0.15),
+                border: Border.all(color: uiColor, width: 1.5),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check, color: uiColor, size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    "Request Sent",
+                    style: TextStyle(
+                      color: uiColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 12),
+            GestureDetector(
+              onTap: () => _navigateToChatScreen(),
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 40, vertical: 10),
+                decoration: BoxDecoration(
+                  color: uiColor,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.chat_bubble_outline,
+                      color: backgroundColor,
+                      size: 18,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      "Open Chat",
+                      style: TextStyle(
+                        color: backgroundColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      case AddButtonState.chat:
+        return GestureDetector(
+          onTap: () => _navigateToChatScreen(),
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 40, vertical: 10),
+            decoration: BoxDecoration(
+              color: uiColor,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.chat_bubble_outline,
+                  color: backgroundColor,
+                  size: 18,
+                ),
+                SizedBox(width: 8),
+                Text(
+                  "Open Chat",
+                  style: TextStyle(
+                    color: backgroundColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+    }
+  }
+
+  Future<void> _onAddPressed({
     required String receiverUid,
     required String displayName,
     required String profilePic,
   }) async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Please login first")));
+      return;
+    }
+
+    setState(() => _buttonState = AddButtonState.loading);
+
     try {
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Please login first")));
-        return;
-      }
       final currentUid = currentUser.uid;
       final uids = [currentUid, receiverUid];
       uids.sort();
       final chatId = "${uids[0]}_${uids[1]}";
 
+      final chatRef = FirebaseFirestore.instance
+          .collection("Chats")
+          .doc(chatId);
+      final chatSnap = await chatRef.get();
+      if (!chatSnap.exists) {
+        await chatRef.set({
+          "participants": [currentUid, receiverUid],
+          "createdAt": FieldValue.serverTimestamp(),
+          "lastMessage": "",
+          "lastMessageTime": FieldValue.serverTimestamp(),
+        });
+      }
+
+      final senderDoc = await FirebaseFirestore.instance
+          .collection("users")
+          .doc(currentUid)
+          .get();
+      final senderName = senderDoc.data()?["displayname"] ?? "Someone";
+
+      await FirebaseFirestore.instance
+          .collection("users")
+          .doc(receiverUid)
+          .collection("notifications")
+          .add({
+            "type": "friend_request",
+            "fromUid": currentUid,
+            "fromName": senderName,
+            "chatId": chatId,
+            "message": "$senderName",
+            "timestamp": FieldValue.serverTimestamp(),
+            "isRead": false,
+          });
+
+      _foundReceiverUid = receiverUid;
+      _foundDisplayName = displayName;
+      _foundProfilePic = profilePic;
+      _foundChatId = chatId;
+
       if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MobileChatScreen(
-              chatId: chatId,
-              receiverUid: receiverUid,
-              receiverDisplayName: displayName,
-              receiverProfilePic: profilePic,
-            ),
-          ),
-        );
+        setState(() => _buttonState = AddButtonState.sent);
       }
     } catch (e) {
       if (mounted) {
+        setState(() => _buttonState = AddButtonState.idle);
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text("Error: ${e.toString()}")));
       }
     }
+  }
+
+  void _navigateToChatScreen() {
+    if (_foundChatId == null || _foundReceiverUid == null) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MobileChatScreen(
+          chatId: _foundChatId!,
+          receiverUid: _foundReceiverUid!,
+          receiverDisplayName: _foundDisplayName ?? "",
+          receiverProfilePic: _foundProfilePic ?? "",
+        ),
+      ),
+    );
   }
 
   @override

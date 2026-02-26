@@ -64,6 +64,9 @@ class ChatControl extends ConsumerWidget {
                 modifiedData['lastMessage'] = localLastMsg['text'];
                 modifiedData['lastMessageSenderId'] =
                     localLastMsg['senderId'] ?? '';
+              } else {
+                modifiedData['lastMessage'] = '';
+                modifiedData['lastMessageSenderId'] = '';
               }
               return ChatContact.fromMap(
                 modifiedData,

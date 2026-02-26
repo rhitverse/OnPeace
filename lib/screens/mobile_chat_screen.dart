@@ -73,7 +73,6 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
     if (currentUserId == null) return;
     final messageText = _messageController.text.trim();
     _messageController.clear();
-    focusNode.unfocus();
     try {
       await ref
           .read(chatControllerProvider)

@@ -30,7 +30,7 @@ class ChatContact {
   }
 
   String getDisplayMessage(String currentUid) {
-    if (lastMessage.isEmpty) return 'No message yet';
+    if (lastMessage.isEmpty || lastMessage == '🔒 Message') return '';
 
     if (isLastMessageMine(currentUid)) {
       return 'You: $lastMessage';
