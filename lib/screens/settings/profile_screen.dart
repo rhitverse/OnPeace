@@ -8,11 +8,12 @@ import 'package:whatsapp_clone/models/user_model.dart';
 import 'package:whatsapp_clone/screens/Profile/bio_screen.dart';
 import 'package:whatsapp_clone/screens/Profile/birthday_screen.dart';
 import 'package:whatsapp_clone/screens/Profile/display_edit_screen.dart';
-import 'package:whatsapp_clone/screens/Profile/qr_screen.dart';
 import 'package:whatsapp_clone/screens/Profile/username_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:whatsapp_clone/widgets/helpful_widgets/profilepic.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 String formatBirthday(String date) {
   final dob = DateTime.parse(date);
@@ -30,6 +31,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final TextEditingController nameController = TextEditingController();
   bool isSaving = false;
   bool allowAddById = true;
+  bool _allowAddLoaded = false;
   File? image;
 
   String formatBirthday(String date) {
@@ -37,9 +39,45 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return DateFormat('dd MMMM yyyy').format(dob);
   }
 
+  Future<void> _loadAllowAddById() async {
+    if (_allowAddLoaded) return;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+      final val = doc.data()?['allowAddById'];
+      if (mounted) {
+        setState(() {
+          allowAddById = val ?? true;
+          _allowAddLoaded = true;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _toggleAllowAddById(bool value) async {
+    setState(() => allowAddById = value);
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(uid).update({
+        'allowAddById': value,
+      });
+    } catch (_) {}
+  }
+
   void selectImage() async {
     image = await pickImageFromGallery(context);
     setState(() {});
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAllowAddById();
   }
 
   @override
@@ -58,9 +96,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             elevation: 0,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_ios, color: whiteColor),
-              onPressed: () {
-                Navigator.pop(context);
-              },
+              onPressed: () => Navigator.pop(context),
             ),
             title: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -265,7 +301,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                     ),
                   ),
-                  SizedBox(height: 20),
+                  const SizedBox(height: 20),
                   _tile(
                     "Display name",
                     value: user.displayname,
@@ -277,40 +313,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     onTap: () => _go(context, const BioScreen()),
                   ),
 
-                  SizedBox(height: 4),
-                  InkWell(
-                    onTap: () => _go(context, const QrScreen()),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Row(
-                        children: const [
-                          Text(
-                            "My QR code",
-                            style: TextStyle(color: whiteColor, fontSize: 18),
-                          ),
-                          Spacer(),
-                          Icon(Icons.chevron_right, color: Colors.grey),
-                        ],
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  const Divider(),
+                  const SizedBox(height: 8),
 
                   _tile(
                     "Usename",
                     value: user.username,
                     onTap: () => _go(context, const UsernameScreen()),
                   ),
-                  SizedBox(height: 22),
+                  SizedBox(height: 17),
+                  const Divider(),
+                  SizedBox(height: 9),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
-                            Text(
+                          children: [
+                            const Text(
                               "Allow others to add me by ID",
                               style: TextStyle(
                                 fontSize: 16,
@@ -318,12 +338,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 color: whiteColor,
                               ),
                             ),
-                            SizedBox(height: 5),
+                            const SizedBox(height: 5),
                             Text(
-                              "Others can add you as a friend searching your ID",
+                              allowAddById
+                                  ? "Others can add you as a friend searching your ID"
+                                  : "Others can add you as a friend searching your ID",
                               style: TextStyle(
                                 fontSize: 14,
-                                color: Colors.grey,
+                                color: allowAddById ? Colors.grey : Colors.grey,
                                 height: 1.3,
                               ),
                             ),
@@ -334,11 +356,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         scale: 0.85,
                         child: Switch(
                           value: allowAddById,
-                          onChanged: (value) {
-                            setState(() {
-                              allowAddById = value;
-                            });
-                          },
+                          onChanged: _toggleAllowAddById,
                           activeThumbColor: whiteColor,
                           activeTrackColor: uiColor,
                           inactiveThumbColor: whiteColor,
@@ -417,7 +435,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       contentPadding: EdgeInsets.zero,
       title: Text(
         title,
-        style: TextStyle(
+        style: const TextStyle(
           fontWeight: FontWeight.normal,
           color: Colors.grey,
           fontSize: 13,

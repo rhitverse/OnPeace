@@ -86,6 +86,7 @@ class _UserSearchState extends State<UserSearch> {
                     stream: FirebaseFirestore.instance
                         .collection("users")
                         .where("username", isEqualTo: searchText)
+                        .where("allowAddById", isEqualTo: true)
                         .snapshots(),
                     builder: (context, snapshot) {
                       if (!snapshot.hasData) {
