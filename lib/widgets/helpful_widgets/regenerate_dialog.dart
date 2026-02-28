@@ -9,7 +9,7 @@ class RegenerateDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: chatBarMessage,
+      backgroundColor: searchBarColor,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       contentPadding: EdgeInsets.zero,
       content: Container(

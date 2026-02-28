@@ -59,6 +59,8 @@ class NotificaionScreen extends StatelessWidget {
                 }
 
                 final docs = snapshot.data!.docs;
+                final seenAccepted = <String>{};
+
                 return ListView.builder(
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
@@ -89,6 +91,18 @@ class NotificaionScreen extends StatelessWidget {
                     }
 
                     if (type == 'friend_request_accepted') {
+                      if (seenAccepted.contains(chatId)) {
+                        FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(currentUid)
+                            .collection('notifications')
+                            .doc(notifId)
+                            .delete()
+                            .catchError((_) {});
+                        return const SizedBox.shrink();
+                      }
+                      seenAccepted.add(chatId);
+
                       return _GeneralNotifTile(
                         notifId: notifId,
                         currentUid: currentUid,
@@ -154,7 +168,8 @@ class _FriendRequestTileState extends State<_FriendRequestTile> {
           .doc(widget.currentUid)
           .collection('notifications')
           .doc(widget.notifId)
-          .update({'isRead': true});
+          .set({'isRead': true}, SetOptions(merge: true))
+          .catchError((_) {});
     }
   }
 
@@ -172,20 +187,18 @@ class _FriendRequestTileState extends State<_FriendRequestTile> {
   Future<void> _accept() async {
     setState(() => _loading = true);
     try {
-      final chatRef = FirebaseFirestore.instance
+      await FirebaseFirestore.instance
           .collection('Chats')
-          .doc(widget.chatId);
-      final chatSnap = await chatRef.get();
-      if (!chatSnap.exists) {
-        await chatRef.set({
-          'participants': [widget.currentUid, widget.fromUid],
-          'lastMessage': '',
-          'lastMessageTime': FieldValue.serverTimestamp(),
-          'lastMessageSenderId': '',
-          'unreadCount_${widget.currentUid}': 0,
-          'unreadCount_${widget.fromUid}': 0,
-        });
-      }
+          .doc(widget.chatId)
+          .set({
+            'participants': [widget.currentUid, widget.fromUid],
+            'lastMessage': '',
+            'lastMessageTime': FieldValue.serverTimestamp(),
+            'lastMessageSenderId': '',
+            'unreadCount_${widget.currentUid}': 0,
+            'unreadCount_${widget.fromUid}': 0,
+            'status': 'accepted',
+          }, SetOptions(merge: true));
 
       final myDoc = await FirebaseFirestore.instance
           .collection('users')
@@ -193,6 +206,16 @@ class _FriendRequestTileState extends State<_FriendRequestTile> {
           .get();
       final myName = myDoc.data()?['displayname'] ?? 'Someone';
 
+      final existingNotifs = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.fromUid)
+          .collection('notifications')
+          .where('type', isEqualTo: 'friend_request_accepted')
+          .where('chatId', isEqualTo: widget.chatId)
+          .get();
+      for (final doc in existingNotifs.docs) {
+        await doc.reference.delete();
+      }
       await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.fromUid)
@@ -220,12 +243,19 @@ class _FriendRequestTileState extends State<_FriendRequestTile> {
   }
 
   Future<void> _ignore() async {
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.currentUid)
-        .collection('notifications')
-        .doc(widget.notifId)
-        .delete();
+    try {
+      await FirebaseFirestore.instance
+          .collection('Chats')
+          .doc(widget.chatId)
+          .delete();
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUid)
+          .collection('notifications')
+          .doc(widget.notifId)
+          .delete();
+    } catch (_) {}
     if (mounted) setState(() => _ignored = true);
   }
 
@@ -254,7 +284,7 @@ class _FriendRequestTileState extends State<_FriendRequestTile> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(top: 4),
+                  padding: const EdgeInsets.only(top: 6),
                   child: RichText(
                     text: TextSpan(
                       children: [
@@ -326,7 +356,7 @@ class _FriendRequestTileState extends State<_FriendRequestTile> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: 6),
             child: Text(
               widget.time,
               style: const TextStyle(color: Colors.grey, fontSize: 12),
@@ -370,7 +400,8 @@ class _GeneralNotifTileState extends State<_GeneralNotifTile> {
           .doc(widget.currentUid)
           .collection('notifications')
           .doc(widget.notifId)
-          .update({'isRead': true});
+          .set({'isRead': true}, SetOptions(merge: true))
+          .catchError((_) {});
     }
   }
 
@@ -450,7 +481,7 @@ class _GeneralNotifTileState extends State<_GeneralNotifTile> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.only(top: 6),
               child: Text(
                 widget.time,
                 style: const TextStyle(color: Colors.grey, fontSize: 12),

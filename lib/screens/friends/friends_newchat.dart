@@ -110,6 +110,7 @@ class _FriendsNewchatState extends State<FriendsNewchat> {
               stream: FirebaseFirestore.instance
                   .collection('Chats')
                   .where('participants', arrayContains: currentUid)
+                  .where('status', isEqualTo: 'accepted')
                   .snapshots(),
               builder: (context, snapshot) {
                 List<Map<String, dynamic>> friends = [];
@@ -177,10 +178,10 @@ class _FriendsNewchatState extends State<FriendsNewchat> {
                         child: Center(child: CircularProgressIndicator()),
                       )
                     else if (friends.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 40),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 40),
                         child: Column(
-                          children: const [
+                          children: [
                             Icon(
                               Icons.people_outline,
                               color: Colors.grey,
@@ -203,13 +204,13 @@ class _FriendsNewchatState extends State<FriendsNewchat> {
                         ),
                       )
                     else
-                      ...friends.map((friend) {
-                        return _FriendTile(
+                      ...friends.map(
+                        (friend) => _FriendTile(
                           chatId: friend['chatId'],
                           receiverUid: friend['receiverUid'],
                           searchQuery: _searchQuery,
-                        );
-                      }),
+                        ),
+                      ),
                   ],
                 );
               },

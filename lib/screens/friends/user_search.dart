@@ -12,7 +12,7 @@ class UserSearch extends StatefulWidget {
   State<UserSearch> createState() => _UserSearchState();
 }
 
-enum AddButtonState { idle, loading, sent, chat }
+enum AddButtonState { idle, loading, sent, chat, alreadyFriend }
 
 class _UserSearchState extends State<UserSearch> {
   final TextEditingController searchController = TextEditingController();
@@ -24,6 +24,35 @@ class _UserSearchState extends State<UserSearch> {
   String? _foundProfilePic;
   String? _foundChatId;
 
+  final String _currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+
+  Future<void> _checkIfAlreadyFriend(String receiverUid) async {
+    if (_currentUid.isEmpty) return;
+    final uids = [_currentUid, receiverUid]..sort();
+    final chatId = "${uids[0]}_${uids[1]}";
+    final chatSnap = await FirebaseFirestore.instance
+        .collection('Chats')
+        .doc(chatId)
+        .get();
+    if (!mounted) return;
+    if (chatSnap.exists) {
+      final status = chatSnap.data()?['status'] ?? 'accepted';
+      if (status == 'accepted') {
+        setState(() {
+          _buttonState = AddButtonState.alreadyFriend;
+          _foundChatId = chatId;
+          _foundReceiverUid = receiverUid;
+        });
+      } else if (status == 'pending') {
+        setState(() {
+          _buttonState = AddButtonState.sent;
+          _foundChatId = chatId;
+          _foundReceiverUid = receiverUid;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -34,7 +63,7 @@ class _UserSearchState extends State<UserSearch> {
           onPressed: () => Navigator.pop(context),
           icon: Icon(Icons.arrow_back_ios, color: whiteColor),
         ),
-        title: Text("Add friends", style: TextStyle(color: whiteColor)),
+        title: const Text("Add friends", style: TextStyle(color: whiteColor)),
       ),
       body: Column(
         children: [
@@ -48,7 +77,7 @@ class _UserSearchState extends State<UserSearch> {
               ),
               child: TextField(
                 controller: searchController,
-                style: TextStyle(color: whiteColor),
+                style: const TextStyle(color: whiteColor),
                 cursorColor: uiColor,
                 decoration: InputDecoration(
                   prefixIcon: Padding(
@@ -59,15 +88,16 @@ class _UserSearchState extends State<UserSearch> {
                     ),
                   ),
                   hintText: "Search by username...",
-                  hintStyle: TextStyle(color: Colors.grey),
+                  hintStyle: const TextStyle(color: Colors.grey),
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 9.6),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 9.6),
                 ),
                 onChanged: (value) {
                   setState(() {
                     searchText = value.trim().toLowerCase();
                     _buttonState = AddButtonState.idle;
                     _foundReceiverUid = null;
+                    _foundChatId = null;
                   });
                 },
               ),
@@ -76,7 +106,7 @@ class _UserSearchState extends State<UserSearch> {
 
           Expanded(
             child: searchText.length < 4
-                ? Center(
+                ? const Center(
                     child: Text(
                       "Search users",
                       style: TextStyle(color: Colors.grey),
@@ -93,9 +123,8 @@ class _UserSearchState extends State<UserSearch> {
                         return const Center(child: CircularProgressIndicator());
                       }
                       final users = snapshot.data!.docs;
-
                       if (users.isEmpty) {
-                        return Center(
+                        return const Center(
                           child: Text(
                             "User not found",
                             style: TextStyle(color: Colors.grey),
@@ -106,10 +135,53 @@ class _UserSearchState extends State<UserSearch> {
                       final user = users.first.data() as Map<String, dynamic>;
                       final receiverUid = users.first.id;
 
+                      if (receiverUid == _currentUid) {
+                        return Column(
+                          children: [
+                            const SizedBox(height: 10),
+                            _buildUserTile(
+                              user: user,
+                              receiverUid: receiverUid,
+                              isSelf: true,
+                            ),
+                            const SizedBox(height: 8),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.info_outline,
+                                    color: Colors.grey,
+                                    size: 14,
+                                  ),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    "It's you",
+                                    style: TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+
+                      if (_buttonState == AddButtonState.idle) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          _checkIfAlreadyFriend(receiverUid);
+                        });
+                      }
                       return Column(
                         children: [
-                          SizedBox(height: 10),
-                          _buildUserTile(user: user, receiverUid: receiverUid),
+                          const SizedBox(height: 10),
+                          _buildUserTile(
+                            user: user,
+                            receiverUid: receiverUid,
+                            isSelf: false,
+                          ),
 
                           if (_buttonState == AddButtonState.sent)
                             Padding(
@@ -124,11 +196,35 @@ class _UserSearchState extends State<UserSearch> {
                                     color: uiColor,
                                     size: 16,
                                   ),
-                                  SizedBox(width: 6),
+                                  const SizedBox(width: 6),
                                   Text(
                                     "Friend request sent",
                                     style: TextStyle(
                                       color: uiColor,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          if (_buttonState == AddButtonState.alreadyFriend)
+                            const Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 6,
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.people_alt_outlined,
+                                    color: Colors.grey,
+                                    size: 16,
+                                  ),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    "Already your friend",
+                                    style: TextStyle(
+                                      color: Colors.grey,
                                       fontSize: 13,
                                     ),
                                   ),
@@ -148,6 +244,7 @@ class _UserSearchState extends State<UserSearch> {
   Widget _buildUserTile({
     required Map<String, dynamic> user,
     required String receiverUid,
+    required bool isSelf,
   }) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -165,10 +262,10 @@ class _UserSearchState extends State<UserSearch> {
                 ? NetworkImage(user["profilePic"])
                 : null,
             child: user["profilePic"] == null || user["profilePic"] == ""
-                ? Icon(Icons.person, color: whiteColor, size: 24)
+                ? const Icon(Icons.person, color: whiteColor, size: 24)
                 : null,
           ),
-          SizedBox(width: 12),
+          const SizedBox(width: 12),
 
           Expanded(
             child: Padding(
@@ -183,12 +280,12 @@ class _UserSearchState extends State<UserSearch> {
               ),
             ),
           ),
-
-          _buildIconButton(
-            receiverUid: receiverUid,
-            displayName: user["displayname"] ?? "",
-            profilePic: user["profilePic"] ?? "",
-          ),
+          if (!isSelf)
+            _buildIconButton(
+              receiverUid: receiverUid,
+              displayName: user["displayname"] ?? "",
+              profilePic: user["profilePic"] ?? "",
+            ),
         ],
       ),
     );
@@ -200,13 +297,37 @@ class _UserSearchState extends State<UserSearch> {
     required String profilePic,
   }) {
     if (_buttonState == AddButtonState.loading) {
-      return SizedBox(
+      return const SizedBox(
         width: 28,
         height: 28,
         child: CircularProgressIndicator(color: uiColor, strokeWidth: 2),
       );
     }
 
+    if (_buttonState == AddButtonState.alreadyFriend) {
+      return GestureDetector(
+        onTap: () {
+          if (_foundChatId == null) return;
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => MobileChatScreen(
+                chatId: _foundChatId!,
+                receiverUid: receiverUid,
+                receiverDisplayName: displayName,
+                receiverProfilePic: profilePic,
+              ),
+            ),
+          );
+        },
+        child: SvgPicture.asset(
+          "assets/svg/chat1.svg",
+          width: 26,
+          height: 26,
+          colorFilter: const ColorFilter.mode(whiteColor, BlendMode.srcIn),
+        ),
+      );
+    }
     if (_buttonState == AddButtonState.sent ||
         _buttonState == AddButtonState.chat) {
       return GestureDetector(
@@ -268,6 +389,7 @@ class _UserSearchState extends State<UserSearch> {
           "lastMessageSenderId": "",
           "unreadCount_$currentUid": 0,
           "unreadCount_$receiverUid": 0,
+          "status": "pending",
         });
       }
 
@@ -286,7 +408,6 @@ class _UserSearchState extends State<UserSearch> {
             "fromUid": currentUid,
             "fromName": senderName,
             "chatId": chatId,
-            "message": "$senderName",
             "timestamp": FieldValue.serverTimestamp(),
             "isRead": false,
           });
