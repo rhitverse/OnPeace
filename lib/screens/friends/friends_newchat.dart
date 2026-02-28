@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:whatsapp_clone/colors.dart';
 import 'package:whatsapp_clone/screens/friends/user_search.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:whatsapp_clone/screens/mobile_chat_screen.dart';
 
 class FriendsNewchat extends StatefulWidget {
   const FriendsNewchat({super.key});
@@ -13,8 +16,18 @@ class FriendsNewchat extends StatefulWidget {
 class _FriendsNewchatState extends State<FriendsNewchat> {
   bool isSearching = false;
   TextEditingController searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final currentUid = FirebaseAuth.instance.currentUser?.uid;
+
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: AppBar(
@@ -30,7 +43,7 @@ class _FriendsNewchatState extends State<FriendsNewchat> {
             ? null
             : IconButton(
                 onPressed: () => Navigator.pop(context),
-                icon: Icon(Icons.arrow_back_ios),
+                icon: const Icon(Icons.arrow_back_ios),
               ),
         title: isSearching
             ? Container(
@@ -44,28 +57,31 @@ class _FriendsNewchatState extends State<FriendsNewchat> {
                   controller: searchController,
                   cursorColor: uiColor,
                   autofocus: true,
-                  style: TextStyle(color: whiteColor),
+                  style: const TextStyle(color: whiteColor),
+                  onChanged: (val) =>
+                      setState(() => _searchQuery = val.toLowerCase()),
                   decoration: InputDecoration(
                     hintText: "Search",
-                    hintStyle: TextStyle(color: Colors.grey),
+                    hintStyle: const TextStyle(color: Colors.grey),
                     border: InputBorder.none,
                     suffixIcon: IconButton(
-                      icon: Icon(Icons.close, color: whiteColor),
+                      icon: const Icon(Icons.close, color: whiteColor),
                       onPressed: () {
                         setState(() {
                           searchController.clear();
+                          _searchQuery = '';
                           isSearching = false;
                         });
                       },
                     ),
-                    contentPadding: EdgeInsets.symmetric(
+                    contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 10,
                     ),
                   ),
                 ),
               )
-            : Text(
+            : const Text(
                 "New Chat",
                 style: TextStyle(
                   color: whiteColor,
@@ -76,109 +92,209 @@ class _FriendsNewchatState extends State<FriendsNewchat> {
             ? []
             : [
                 IconButton(
-                  icon: Icon(Icons.search, color: whiteColor, size: 27),
-                  onPressed: () {
-                    setState(() {
-                      isSearching = true;
-                    });
-                  },
+                  icon: const Icon(Icons.search, color: whiteColor, size: 27),
+                  onPressed: () => setState(() => isSearching = true),
                 ),
-                Icon(Icons.more_vert, color: whiteColor, size: 27),
-                SizedBox(width: 10),
+                const Icon(Icons.more_vert, color: whiteColor, size: 27),
+                const SizedBox(width: 10),
               ],
       ),
-      body: ListView(
-        children: [
-          ListTile(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => UserSearch()),
-              );
-            },
-            leading: SvgPicture.asset(
-              "assets/svg/addfriends.svg",
-              width: 30,
-              height: 30,
-              color: whiteColor,
-            ),
-            title: Text(
-              "Add Friends",
-              style: TextStyle(
-                color: whiteColor,
-                fontSize: 17,
-                fontWeight: FontWeight.bold,
+      body: currentUid == null
+          ? const Center(
+              child: Text(
+                "Not logged in",
+                style: TextStyle(color: Colors.grey),
               ),
-            ),
-          ),
-          ListTile(
-            onTap: () {},
-            leading: SvgPicture.asset(
-              "assets/svg/addgroup.svg",
-              width: 34,
-              height: 34,
-              color: whiteColor,
-            ),
-            title: Text(
-              "New Group",
-              style: TextStyle(
-                color: whiteColor,
-                fontSize: 17,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
+            )
+          : StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('Chats')
+                  .where('participants', arrayContains: currentUid)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                List<Map<String, dynamic>> friends = [];
+                if (snapshot.hasData) {
+                  for (final doc in snapshot.data!.docs) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final participants = List<String>.from(
+                      data['participants'] ?? [],
+                    );
+                    final receiverUid = participants.firstWhere(
+                      (uid) => uid != currentUid,
+                      orElse: () => '',
+                    );
+                    if (receiverUid.isNotEmpty) {
+                      friends.add({
+                        'chatId': doc.id,
+                        'receiverUid': receiverUid,
+                      });
+                    }
+                  }
+                }
 
-          const UserTile(
-            name: "Aakash Frnd",
-            bio: "Hey there! I am using WhatsApp.",
-          ),
-          UserTile(name: "Aaryan B1", bio: "Available"),
-          UserTile(name: "Aman Clg", bio: "Busy right now"),
-          UserTile(name: "Aaryan B1", bio: "Busy right now"),
-          UserTile(name: "Aaryan B1", bio: "Available"),
-          UserTile(name: "Aaryan B1", bio: "Available"),
-          UserTile(name: "Aaryan B1", bio: "Busy right now"),
-          UserTile(name: "Aaryan B1", bio: "Available"),
-          UserTile(name: "Aaryan B1", bio: "Available"),
-          UserTile(name: "Aaryan B1", bio: "Busy right now"),
-          UserTile(name: "Aaryan B1", bio: "Available"),
-          UserTile(name: "Aaryan B1", bio: "Busy right now"),
-          UserTile(name: "Aaryan B1", bio: "Available"),
-          UserTile(name: "Aaryan B1", bio: "Busy right now"),
-        ],
-      ),
+                return ListView(
+                  children: [
+                    ListTile(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const UserSearch()),
+                      ),
+                      leading: SvgPicture.asset(
+                        "assets/svg/addfriends.svg",
+                        width: 30,
+                        height: 30,
+                        color: whiteColor,
+                      ),
+                      title: const Text(
+                        "Add Friends",
+                        style: TextStyle(
+                          color: whiteColor,
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    ListTile(
+                      onTap: () {},
+                      leading: SvgPicture.asset(
+                        "assets/svg/addgroup.svg",
+                        width: 34,
+                        height: 34,
+                        color: whiteColor,
+                      ),
+                      title: const Text(
+                        "New Group",
+                        style: TextStyle(
+                          color: whiteColor,
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    if (snapshot.connectionState == ConnectionState.waiting)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 20),
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    else if (friends.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 40),
+                        child: Column(
+                          children: const [
+                            Icon(
+                              Icons.people_outline,
+                              color: Colors.grey,
+                              size: 48,
+                            ),
+                            SizedBox(height: 10),
+                            Text(
+                              "No friends yet",
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              "Add friends to start chatting",
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      ...friends.map((friend) {
+                        return _FriendTile(
+                          chatId: friend['chatId'],
+                          receiverUid: friend['receiverUid'],
+                          searchQuery: _searchQuery,
+                        );
+                      }),
+                  ],
+                );
+              },
+            ),
     );
   }
 }
 
-class UserTile extends StatelessWidget {
-  final String name;
-  final String bio;
-  const UserTile({super.key, required this.name, required this.bio});
+class _FriendTile extends StatelessWidget {
+  final String chatId;
+  final String receiverUid;
+  final String searchQuery;
+
+  const _FriendTile({
+    required this.chatId,
+    required this.receiverUid,
+    required this.searchQuery,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-      leading: CircleAvatar(
-        radius: 28,
-        backgroundColor: Colors.grey.shade700,
-        child: Text(
-          name[0],
-          style: TextStyle(color: whiteColor, fontWeight: FontWeight.bold),
-        ),
-      ),
-      title: Text(
-        name,
-        style: TextStyle(color: whiteColor, fontWeight: FontWeight.bold),
-      ),
-      subtitle: Text(
-        bio,
-        style: TextStyle(color: Colors.grey, fontSize: 13),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
+    return FutureBuilder<DocumentSnapshot>(
+      future: FirebaseFirestore.instance
+          .collection('users')
+          .doc(receiverUid)
+          .get(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const SizedBox.shrink();
+
+        final data = snapshot.data!.data() as Map<String, dynamic>? ?? {};
+        final displayName =
+            data['displayname'] ?? data['username'] ?? 'Unknown';
+        final bio = data['bio'] ?? '';
+        final profilePic = data['profilePic'] ?? '';
+
+        if (searchQuery.isNotEmpty &&
+            !displayName.toLowerCase().contains(searchQuery)) {
+          return const SizedBox.shrink();
+        }
+
+        return ListTile(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => MobileChatScreen(
+                chatId: chatId,
+                receiverUid: receiverUid,
+                receiverDisplayName: displayName,
+                receiverProfilePic: profilePic,
+              ),
+            ),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          leading: CircleAvatar(
+            radius: 28,
+            backgroundColor: Colors.grey.shade700,
+            backgroundImage: profilePic.isNotEmpty
+                ? NetworkImage(profilePic)
+                : null,
+            child: profilePic.isEmpty
+                ? Text(
+                    displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+                    style: const TextStyle(
+                      color: whiteColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  )
+                : null,
+          ),
+          title: Text(
+            displayName,
+            style: const TextStyle(
+              color: whiteColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          subtitle: Text(
+            bio.isNotEmpty ? bio : "Hey there!",
+            style: const TextStyle(color: Colors.grey, fontSize: 13),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        );
+      },
     );
   }
 }
