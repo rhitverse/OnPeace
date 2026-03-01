@@ -28,6 +28,21 @@ class _UserSearchState extends State<UserSearch> {
 
   Future<void> _checkIfAlreadyFriend(String receiverUid) async {
     if (_currentUid.isEmpty) return;
+
+    final friendDoc = await FirebaseFirestore.instance
+        .collection('Friends')
+        .doc('${_currentUid}_$receiverUid')
+        .get();
+    if (!mounted) return;
+    if (friendDoc.exists) {
+      final chatId = friendDoc.data()?['chatId'] ?? '';
+      setState(() {
+        _buttonState = AddButtonState.alreadyFriend;
+        _foundChatId = chatId;
+        _foundReceiverUid = receiverUid;
+      });
+      return;
+    }
     final uids = [_currentUid, receiverUid]..sort();
     final chatId = "${uids[0]}_${uids[1]}";
     final chatSnap = await FirebaseFirestore.instance
@@ -35,21 +50,12 @@ class _UserSearchState extends State<UserSearch> {
         .doc(chatId)
         .get();
     if (!mounted) return;
-    if (chatSnap.exists) {
-      final status = chatSnap.data()?['status'] ?? 'accepted';
-      if (status == 'accepted') {
-        setState(() {
-          _buttonState = AddButtonState.alreadyFriend;
-          _foundChatId = chatId;
-          _foundReceiverUid = receiverUid;
-        });
-      } else if (status == 'pending') {
-        setState(() {
-          _buttonState = AddButtonState.sent;
-          _foundChatId = chatId;
-          _foundReceiverUid = receiverUid;
-        });
-      }
+    if (chatSnap.exists && chatSnap.data()?['status'] == 'pending') {
+      setState(() {
+        _buttonState = AddButtonState.sent;
+        _foundChatId = chatId;
+        _foundReceiverUid = receiverUid;
+      });
     }
   }
 

@@ -108,27 +108,18 @@ class _FriendsNewchatState extends State<FriendsNewchat> {
             )
           : StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
-                  .collection('Chats')
-                  .where('participants', arrayContains: currentUid)
-                  .where('status', isEqualTo: 'accepted')
+                  .collection('Friends')
+                  .where('uid', isEqualTo: currentUid)
                   .snapshots(),
               builder: (context, snapshot) {
                 List<Map<String, dynamic>> friends = [];
                 if (snapshot.hasData) {
                   for (final doc in snapshot.data!.docs) {
                     final data = doc.data() as Map<String, dynamic>;
-                    final participants = List<String>.from(
-                      data['participants'] ?? [],
-                    );
-                    final receiverUid = participants.firstWhere(
-                      (uid) => uid != currentUid,
-                      orElse: () => '',
-                    );
-                    if (receiverUid.isNotEmpty) {
-                      friends.add({
-                        'chatId': doc.id,
-                        'receiverUid': receiverUid,
-                      });
+                    final friendUid = data['friendUid'] ?? '';
+                    final chatId = data['chatId'] ?? '';
+                    if (friendUid.isNotEmpty && chatId.isNotEmpty) {
+                      friends.add({'chatId': chatId, 'receiverUid': friendUid});
                     }
                   }
                 }

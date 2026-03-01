@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:whatsapp_clone/features/auth/repository/auth_repository.dart';
 import 'package:whatsapp_clone/models/user_model.dart';
+import 'package:rxdart/rxdart.dart';
 
 final firebaseAuthProvider = Provider<FirebaseAuth>((ref) {
   return FirebaseAuth.instance;
@@ -34,5 +35,8 @@ final currentUserProvider = Provider<User?>((ref) {
 });
 
 final userProvider = StreamProvider<UserModel>((ref) {
-  return ref.read(authRepositoryProvider).getUserData();
+  return ref.watch(firebaseAuthProvider).authStateChanges().switchMap((user) {
+    if (user == null) return const Stream.empty();
+    return ref.read(authRepositoryProvider).getUserData();
+  });
 });

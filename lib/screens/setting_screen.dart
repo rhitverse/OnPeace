@@ -232,7 +232,13 @@ class SettingScreen extends ConsumerWidget {
           Text("Loading...", style: TextStyle(color: whiteColor)),
         ],
       ),
-      error: (err, stack) => const SizedBox(),
+      error: (err, stack) => Row(
+        children: const [
+          CircleAvatar(radius: 28, backgroundColor: Colors.grey),
+          SizedBox(width: 12),
+          Text("Loading...", style: TextStyle(color: whiteColor)),
+        ],
+      ),
       data: (user) {
         if (user.profilePic.isEmpty) {
           return Row(

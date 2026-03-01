@@ -1,35 +1,37 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:rxdart/rxdart.dart';
 
 class NotificationRepository {
   final FirebaseFirestore _firestore;
 
   NotificationRepository({required FirebaseFirestore firestore})
     : _firestore = firestore;
-
   Stream<QuerySnapshot> getNotificationsStream() {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return const Stream.empty();
+    return FirebaseAuth.instance.authStateChanges().switchMap((user) {
+      if (user == null) return const Stream.empty();
 
-    return _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('notifications')
-        .orderBy('timestamp', descending: true)
-        .snapshots();
+      return _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('notifications')
+          .orderBy('timestamp', descending: true)
+          .snapshots();
+    });
   }
 
   Stream<int> getUnreadCountStream() {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return Stream.value(0);
+    return FirebaseAuth.instance.authStateChanges().switchMap((user) {
+      if (user == null) return Stream.value(0);
 
-    return _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('notifications')
-        .where('isRead', isEqualTo: false)
-        .snapshots()
-        .map((snap) => snap.docs.length);
+      return _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('notifications')
+          .where('isRead', isEqualTo: false)
+          .snapshots()
+          .map((snap) => snap.docs.length);
+    });
   }
 
   Future<void> sendNotification({
@@ -128,6 +130,22 @@ class NotificationRepository {
       'unreadCount_$fromUid': 0,
       'status': 'accepted',
     }, SetOptions(merge: true));
+
+    final batch = _firestore.batch();
+    batch.set(_firestore.collection('Friends').doc('${currentUid}_$fromUid'), {
+      'uid': currentUid,
+      'friendUid': fromUid,
+      'chatId': chatId,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    batch.set(_firestore.collection('Friends').doc('${fromUid}_$currentUid'), {
+      'uid': fromUid,
+      'friendUid': currentUid,
+      'chatId': chatId,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    await batch.commit();
 
     await deleteDuplicateAccepted(toUid: fromUid, chatId: chatId);
 
