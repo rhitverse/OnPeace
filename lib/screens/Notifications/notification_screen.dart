@@ -57,21 +57,34 @@ class NotificaionScreen extends ConsumerWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        SvgPicture.asset(
-                          "assets/svg/notification1.svg",
-                          height: 140,
-                          colorFilter: const ColorFilter.mode(
-                            whiteColor,
-                            BlendMode.srcIn,
+                        Transform.translate(
+                          offset: const Offset(0, -36),
+                          child: SvgPicture.asset(
+                            "assets/svg/notif.svg",
+                            height: 70,
+                            colorFilter: const ColorFilter.mode(
+                              Colors.grey,
+                              BlendMode.srcIn,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 22),
+                        const SizedBox(height: 20),
                         const Text(
-                          "No notifications yet",
+                          "No notifications",
                           style: TextStyle(
                             color: whiteColor,
                             fontSize: 22,
                             fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          "We'll let you know when there will be something\nto update you.",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 17,
+                            height: 1.4,
                           ),
                         ),
                       ],

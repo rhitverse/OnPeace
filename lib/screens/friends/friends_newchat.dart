@@ -169,26 +169,34 @@ class _FriendsNewchatState extends State<FriendsNewchat> {
                         child: Center(child: CircularProgressIndicator()),
                       )
                     else if (friends.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 40),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 90),
                         child: Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
-                              Icons.people_outline,
-                              color: Colors.grey,
-                              size: 48,
+                            Center(
+                              child: SvgPicture.asset(
+                                "assets/svg/friendempty.svg",
+                                height: 260,
+                              ),
                             ),
-                            SizedBox(height: 10),
-                            Text(
-                              "No friends yet",
-                              style: TextStyle(color: Colors.grey),
+                            const SizedBox(height: 16),
+                            const Text(
+                              "No friends yet!",
+                              style: TextStyle(
+                                color: whiteColor,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
-                            SizedBox(height: 4),
-                            Text(
-                              "Add friends to start chatting",
+                            const SizedBox(height: 10),
+                            const Text(
+                              "Add your friends or keep discorvering new\nfrequencies.",
+                              textAlign: TextAlign.center,
                               style: TextStyle(
                                 color: Colors.grey,
-                                fontSize: 13,
+                                fontSize: 15,
+                                height: 1.4,
                               ),
                             ),
                           ],
