@@ -9,8 +9,9 @@ class ChatController {
   ChatController({required ChatRepository chatRepository, required this.ref})
     : _chatRepository = chatRepository;
 
-  Stream<List<Map<String, dynamic>>> getLocalContactsStream(String uid) {
-    return _chatRepository.getLocalContactsStream(uid);
+  // ✅ Local nahi — Firestore stream
+  Stream<List<Map<String, dynamic>>> getMessagesStream(String chatId) {
+    return _chatRepository.getMessagesStream(chatId);
   }
 
   Stream<QuerySnapshot> getUserChats(String uid) {
@@ -30,9 +31,11 @@ class ChatController {
       senderId: senderId,
       text: text,
       receiverId: receiverId,
-      receiverDispalyName: receiverDisplayName,
-      receiverProfilePic: receiverProfilePic,
     );
+  }
+
+  Future<void> markAsRead(String chatId, String userId) async {
+    await _chatRepository.markAsRead(chatId, userId);
   }
 
   Future<void> createChat({
@@ -43,13 +46,5 @@ class ChatController {
       chatId: chatId,
       participants: participants,
     );
-  }
-
-  Stream<List<Map<String, dynamic>>> getLocalMessagesStream(String chatId) {
-    return _chatRepository.getLocalMessagesStream(chatId);
-  }
-
-  Future<void> markAsRead(String chatId, String userId) async {
-    await _chatRepository.markAsRead(chatId, userId);
   }
 }

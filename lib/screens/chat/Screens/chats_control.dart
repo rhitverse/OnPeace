@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:whatsapp_clone/models/chat_contact.dart';
 import 'package:whatsapp_clone/screens/chat/Screens/contacts_list_screen.dart';
 import 'package:whatsapp_clone/screens/chat/Screens/empty_contacts_screen.dart';
-import 'package:whatsapp_clone/screens/chat/provider/chat_provider.dart';
 
 class ChatControl extends ConsumerWidget {
   final String userId;
@@ -12,8 +11,6 @@ class ChatControl extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final chatRepo = ref.read(chatRepositoryProvider);
-
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('Chats')
@@ -61,16 +58,9 @@ class ChatControl extends ConsumerWidget {
               final otherUserData = otherUserDoc.data() ?? {};
               final modifiedData = Map<String, dynamic>.from(data);
 
-              final localLastMsg = await chatRepo.getLocalLastMessage(doc.id);
-              if (localLastMsg != null &&
-                  localLastMsg['text'] != null &&
-                  localLastMsg['text'].toString().isNotEmpty) {
-                modifiedData['lastMessage'] = localLastMsg['text'];
-                modifiedData['lastMessageSenderId'] =
-                    localLastMsg['senderId'] ?? '';
-              } else {
-                return null;
-              }
+              final firestoreLastMsg = data['lastMessage']?.toString() ?? '';
+              if (firestoreLastMsg.isEmpty) return null;
+              modifiedData['lastMessage'] = firestoreLastMsg;
 
               return ChatContact.fromMap(
                 modifiedData,

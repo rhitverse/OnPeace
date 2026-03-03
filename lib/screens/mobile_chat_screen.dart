@@ -152,7 +152,7 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
             child: StreamBuilder<List<Map<String, dynamic>>>(
               stream: ref
                   .read(chatControllerProvider)
-                  .getLocalMessagesStream(widget.chatId),
+                  .getMessagesStream(widget.chatId),
               builder: (context, snapshot) {
                 if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return const SizedBox();
