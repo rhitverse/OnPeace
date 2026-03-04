@@ -9,7 +9,6 @@ class ChatController {
   ChatController({required ChatRepository chatRepository, required this.ref})
     : _chatRepository = chatRepository;
 
-  // ✅ Local nahi — Firestore stream
   Stream<List<Map<String, dynamic>>> getMessagesStream(String chatId) {
     return _chatRepository.getMessagesStream(chatId);
   }

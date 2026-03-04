@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:whatsapp_clone/common/encryption/encryption_service.dart';
 import 'package:whatsapp_clone/models/chat_contact.dart';
 import 'package:whatsapp_clone/screens/chat/Screens/contacts_list_screen.dart';
 import 'package:whatsapp_clone/screens/chat/Screens/empty_contacts_screen.dart';
@@ -58,9 +59,39 @@ class ChatControl extends ConsumerWidget {
               final otherUserData = otherUserDoc.data() ?? {};
               final modifiedData = Map<String, dynamic>.from(data);
 
-              final firestoreLastMsg = data['lastMessage']?.toString() ?? '';
-              if (firestoreLastMsg.isEmpty) return null;
-              modifiedData['lastMessage'] = firestoreLastMsg;
+              final lastMsgSnap = await FirebaseFirestore.instance
+                  .collection('Chats')
+                  .doc(doc.id)
+                  .collection('messages')
+                  .orderBy('time', descending: true)
+                  .limit(1)
+                  .get();
+
+              String realLastMessage = 'Message';
+              if (lastMsgSnap.docs.isNotEmpty) {
+                final lastMsgData = lastMsgSnap.docs.first.data();
+                final senderId = lastMsgData['senderId'] ?? '';
+                final textField = senderId == userId
+                    ? lastMsgData['encryptedSenderCopy'] ??
+                          lastMsgData['plainText'] ??
+                          'Message'
+                    : lastMsgData['encryptedText'] ??
+                          lastMsgData['text'] ??
+                          'Message';
+
+                try {
+                  realLastMessage = await EncryptionService().decryptMessage(
+                    textField,
+                    userId,
+                  );
+                } catch (_) {
+                  realLastMessage = senderId == userId
+                      ? lastMsgData['plainText'] ?? 'Message'
+                      : 'Message';
+                }
+              }
+
+              modifiedData['lastMessage'] = realLastMessage;
 
               return ChatContact.fromMap(
                 modifiedData,
