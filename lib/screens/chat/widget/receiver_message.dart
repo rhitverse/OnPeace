@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:whatsapp_clone/colors.dart';
 import 'package:whatsapp_clone/screens/chat/widget/bubble_tail_painter.dart';
+import 'package:whatsapp_clone/screens/chat/widget/link_preview_card.dart';
+import 'package:whatsapp_clone/screens/chat/widget/message_helper.dart';
 
 class ReceiverMessage extends StatelessWidget {
   final String text;
@@ -34,6 +36,41 @@ class ReceiverMessage extends StatelessWidget {
   Widget build(BuildContext context) {
     final timeWidth = _getTimeWidth(context);
     const double spacerHeight = _timeFontSize;
+
+    final hasUrl = isUri(text);
+    final url = hasUrl ? extractUrl(text) : null;
+    if (hasUrl && url != null) {
+      return Padding(
+        padding: EdgeInsets.symmetric(
+          vertical: isGrouped ? 1 : 5,
+          horizontal: 1,
+        ),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: LinkPreviewCard(url: url, isMe: false),
+              ),
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.only(left: 16.0),
+                child: Text(
+                  time,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: _timeFontSize,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return Padding(
       padding: EdgeInsets.symmetric(vertical: isGrouped ? 1 : 5, horizontal: 1),
       child: Align(

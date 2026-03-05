@@ -53,6 +53,10 @@ dependencies:
   rxdart: ^0.28.0
   flutter_map: ^8.2.2
   latlong2: ^0.9.1
+  flutter_inappwebview: ^6.1.5
+  webview_flutter: ^4.13.1
+  http: ^1.6.0
+  html: ^0.15.6
 
 dev_dependencies:
   flutter_test:
@@ -77,7 +81,6 @@ dev_dependencies:
   shared_preferences: ^2.2.2
   cloud_functions: ^6.0.6
   image_picker: ^1.2.1
-  http: ^1.6.0
   crypto: ^3.0.7
   flutter_image_compress: ^2.4.0
   mobile_scanner: ^7.1.4
