@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as html_parser;
 import 'package:whatsapp_clone/colors.dart';
+import 'dart:ui' as ui;
 
 class LinkPreviewCard extends StatefulWidget {
   final String url;
@@ -19,6 +20,14 @@ class _LinkPreviewCardState extends State<LinkPreviewCard> {
   void initState() {
     super.initState();
     _dataFuture = _fetchPreviewData(widget.url);
+  }
+
+  @override
+  void didUpdateWidget(LinkPreviewCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.url != widget.url) {
+      _dataFuture = _fetchPreviewData(widget.url);
+    }
   }
 
   Future<PreviewData> _fetchPreviewData(String url) async {
@@ -71,7 +80,9 @@ class _LinkPreviewCardState extends State<LinkPreviewCard> {
   }
 
   String _getWebsiteName(String domain) {
-    if (domain.contains('youtube')) return 'Youtube';
+    if (domain.contains('youtube') || domain.contains('youtu.be')) {
+      return 'YouTube';
+    }
     if (domain.contains('instagram')) return 'Instagram';
     if (domain.contains('twitter') || domain.contains('x.com')) return 'X';
     if (domain.contains('facebook')) return 'Facebook';
@@ -81,6 +92,62 @@ class _LinkPreviewCardState extends State<LinkPreviewCard> {
     if (domain.contains('tiktok')) return 'TikTok';
     if (domain.contains('map')) return 'Maps';
     return 'Link';
+  }
+
+  bool _isVideoUrl(String domain) {
+    return domain.contains('youtube') ||
+        domain.contains('youtu.be') ||
+        domain.contains('youtube-nocookie') ||
+        domain.contains('tiktok') ||
+        domain.contains('instagram') ||
+        domain.contains('facebook') ||
+        domain.contains('vimeo') ||
+        domain.contains('dailymotion');
+  }
+
+  String _formatUrl(String url) {
+    if (url.length > 70) {
+      final uri = Uri.parse(url);
+      final domain = uri.host;
+      final path = uri.path;
+
+      if (path.isNotEmpty && path != '/') {
+        final displayPath = path.length > 30
+            ? '${path.substring(0, 30)}...'
+            : path;
+        return '$domain$displayPath';
+      }
+      return domain;
+    }
+    return url;
+  }
+
+  void _showLoadingDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted && Navigator.canPop(dialogContext)) {
+            Navigator.pop(dialogContext);
+          }
+        });
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: Center(
+            child: SizedBox(
+              height: 60,
+              width: 60,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                valueColor: const AlwaysStoppedAnimation(Colors.cyan),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -103,24 +170,77 @@ class _LinkPreviewCardState extends State<LinkPreviewCard> {
   Widget _buildLoadingCard() {
     return Container(
       constraints: BoxConstraints(
-        maxWidth: MediaQuery.of(context).size.width * 0.75,
+        maxWidth: MediaQuery.of(context).size.width * 0.65,
       ),
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.symmetric(vertical: 2),
       decoration: BoxDecoration(
         color: widget.isMe ? senderMessageColor : receiverMessageColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[600]!, width: 0.5),
-      ),
-      child: const Center(
-        child: SizedBox(
-          height: 40,
-          width: 40,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation(Colors.cyan),
-          ),
+        border: Border.all(
+          color: widget.isMe ? Colors.green[800]! : Colors.black,
+          width: 1,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: backgroundColor.withOpacity(0.3),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ClipRRect(
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(12),
+              topRight: Radius.circular(12),
+            ),
+            child: Container(
+              width: double.infinity,
+              height: MediaQuery.of(context).size.height * 0.32,
+              decoration: BoxDecoration(color: Colors.grey[900]!),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 160,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[700],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: 100,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[700],
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: 150,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[700],
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -141,6 +261,7 @@ class _LinkPreviewCardState extends State<LinkPreviewCard> {
         onTap: () async {
           final uri = Uri.parse(widget.url);
           if (await canLaunchUrl(uri)) {
+            _showLoadingDialog(context);
             await launchUrl(uri, mode: LaunchMode.externalApplication);
           }
         },
@@ -161,24 +282,19 @@ class _LinkPreviewCardState extends State<LinkPreviewCard> {
   }
 
   Widget _buildPreviewCard(PreviewData data) {
-    return GestureDetector(
-      onTap: () async {
-        final uri = Uri.parse(widget.url);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        }
-      },
-      child: Container(
+    if (data.image == null || data.image!.isEmpty) {
+      return Container(
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.75,
+          maxWidth: MediaQuery.of(context).size.width * 0.65,
         ),
-        margin: const EdgeInsets.symmetric(vertical: 4),
+        margin: const EdgeInsets.symmetric(vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
           color: widget.isMe ? senderMessageColor : receiverMessageColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: widget.isMe ? Colors.green[800]! : Colors.grey[700]!,
-            width: 1,
+            width: 3,
           ),
           boxShadow: [
             BoxShadow(
@@ -192,99 +308,250 @@ class _LinkPreviewCardState extends State<LinkPreviewCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (data.image != null && data.image!.isNotEmpty)
-              ClipRRect(
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(12),
-                  topRight: Radius.circular(12),
+            GestureDetector(
+              onTap: () async {
+                final uri = Uri.parse(widget.url);
+                if (await canLaunchUrl(uri)) {
+                  _showLoadingDialog(context);
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+              },
+              child: Text(
+                data.title,
+                style: const TextStyle(
+                  color: whiteColor,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  height: 1.3,
                 ),
-                child: Container(
-                  width: double.infinity,
-                  height: 180,
-                  color: Colors.grey[800],
-                  child: Image.network(
-                    data.image!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return _buildImagePlaceholder();
-                    },
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Center(
-                        child: CircularProgressIndicator(
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded /
-                                    loadingProgress.expectedTotalBytes!
-                              : null,
-                          valueColor: const AlwaysStoppedAnimation(Colors.cyan),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              )
-            else
-              ClipRRect(
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(12),
-                  topRight: Radius.circular(12),
-                ),
-                child: _buildImagePlaceholder(),
-              ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.grey[800],
-                  borderRadius: BorderRadius.circular(3),
-                ),
-                child: Text(
-                  _getWebsiteName(data.domain),
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
+            const SizedBox(height: 6),
+            Text(
+              _getWebsiteName(data.domain),
+              style: TextStyle(
+                color: Colors.grey[400],
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 6),
+            GestureDetector(
+              onTap: () async {
+                final uri = Uri.parse(widget.url);
+                if (await canLaunchUrl(uri)) {
+                  _showLoadingDialog(context);
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+              },
+              child: Text(
+                _formatUrl(widget.url),
+                style: const TextStyle(
+                  color: Color(0xFF4A9EFF),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width * 0.65,
+      ),
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      decoration: BoxDecoration(
+        color: widget.isMe ? senderMessageColor : receiverMessageColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: widget.isMe ? Colors.green[800]! : Colors.grey[700]!,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: backgroundColor.withOpacity(0.3),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ClipRRect(
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(12),
+              topRight: Radius.circular(12),
+            ),
+            child: Container(
+              width: double.infinity,
+              height: MediaQuery.of(context).size.height * 0.32,
+              color: Colors.grey[800],
+              child: _isVideoUrl(data.domain)
+                  ? Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        ImageFiltered(
+                          imageFilter: ui.ImageFilter.blur(
+                            sigmaX: 10,
+                            sigmaY: 10,
+                          ),
+                          child: Image.network(
+                            data.image!,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(color: Colors.grey[800]);
+                            },
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return _buildImageLoaderSkeleton();
+                            },
+                          ),
+                        ),
+                        Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.3),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.play_arrow,
+                            color: whiteColor,
+                            size: 40,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Image.network(
+                      data.image!,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                      errorBuilder: (context, error, stackTrace) {
+                        return _buildImagePlaceholder();
+                      },
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return _buildImageLoaderSkeleton();
+                      },
+                    ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GestureDetector(
+                  onTap: () async {
+                    final uri = Uri.parse(widget.url);
+                    if (await canLaunchUrl(uri)) {
+                      _showLoadingDialog(context);
+                      await launchUrl(
+                        uri,
+                        mode: LaunchMode.externalApplication,
+                      );
+                    }
+                  },
+                  child: Text(
                     data.title,
                     style: const TextStyle(
                       color: whiteColor,
-                      fontSize: 13,
+                      fontSize: 15,
                       fontWeight: FontWeight.w600,
                       height: 1.3,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(width: 10),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                    child: Text(
-                      widget.url.length > 40
-                          ? '${widget.url.substring(0, 37)}...'
-                          : widget.url,
-                      style: const TextStyle(
-                        color: senderMessageColor,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                        decoration: TextDecoration.underline,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  _getWebsiteName(data.domain),
+                  style: TextStyle(
+                    color: Colors.grey[400],
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
                   ),
-                ],
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 6),
+                GestureDetector(
+                  onTap: () async {
+                    final uri = Uri.parse(widget.url);
+                    if (await canLaunchUrl(uri)) {
+                      _showLoadingDialog(context);
+                      await launchUrl(
+                        uri,
+                        mode: LaunchMode.externalApplication,
+                      );
+                    }
+                  },
+                  child: Text(
+                    _formatUrl(widget.url),
+                    style: const TextStyle(
+                      color: Color(0xFF4A9EFF),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImageLoaderSkeleton() {
+    return Container(
+      width: double.infinity,
+      height: MediaQuery.of(context).size.height * 0.32,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.grey[800]!, Colors.grey[700]!],
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              height: 50,
+              width: 50,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                valueColor: const AlwaysStoppedAnimation(Colors.cyan),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Loading preview...',
+              style: TextStyle(
+                color: Colors.grey[500],
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ],

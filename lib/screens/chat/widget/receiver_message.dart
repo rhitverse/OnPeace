@@ -57,11 +57,11 @@ class ReceiverMessage extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Padding(
-                padding: const EdgeInsets.only(left: 16.0),
+                padding: const EdgeInsets.only(left: 10),
                 child: Text(
                   time,
                   style: const TextStyle(
-                    color: Colors.white70,
+                    color: whiteColor,
                     fontSize: _timeFontSize,
                   ),
                 ),

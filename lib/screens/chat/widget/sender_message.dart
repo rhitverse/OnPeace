@@ -57,6 +57,17 @@ class SenderMessage extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8.0),
                 child: LinkPreviewCard(url: url, isMe: true),
               ),
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.only(right: 10),
+                child: Text(
+                  time,
+                  style: const TextStyle(
+                    color: whiteColor,
+                    fontSize: _timeFontSize,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
