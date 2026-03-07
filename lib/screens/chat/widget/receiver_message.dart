@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:whatsapp_clone/colors.dart';
 import 'package:whatsapp_clone/screens/chat/widget/bubble_tail_painter.dart';
 import 'package:whatsapp_clone/screens/chat/widget/link_preview_card.dart';
+import 'package:whatsapp_clone/screens/chat/widget/media_message_bubble.dart';
 import 'package:whatsapp_clone/screens/chat/widget/message_helper.dart';
 
 class ReceiverMessage extends StatelessWidget {
@@ -10,6 +11,11 @@ class ReceiverMessage extends StatelessWidget {
   final bool showTail;
   final bool isGrouped;
   final bool showTime;
+  final String? mediaUrl;
+  final String? mediaType;
+  final String? fileName;
+  final int? fileSize;
+  final int? duration;
   const ReceiverMessage({
     super.key,
     required this.text,
@@ -17,6 +23,11 @@ class ReceiverMessage extends StatelessWidget {
     this.showTail = true,
     this.isGrouped = false,
     this.showTime = true,
+    this.mediaUrl,
+    this.mediaType,
+    this.fileName,
+    this.fileSize,
+    this.duration,
   });
 
   static const double _fontSize = 16.0;
@@ -36,9 +47,21 @@ class ReceiverMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (mediaUrl != null && mediaUrl!.isNotEmpty) {
+      return MediaMessageBubble(
+        mediaUrl: mediaUrl!,
+        mediaType: mediaType ?? 'file',
+        fileName: fileName,
+        fileSize: fileSize,
+        duration: duration,
+        time: time,
+        isMe: false,
+        showTail: showTail,
+        isGrouped: isGrouped,
+        showTime: showTime,
+      );
+    }
     final timeWidth = showTime ? _getTimeWidth(context) : 0.0;
-    const double spacerHeight = _timeFontSize;
-
     final hasUrl = isUri(text);
     final url = hasUrl ? extractUrl(text) : null;
     if (hasUrl && url != null) {
@@ -121,7 +144,7 @@ class ReceiverMessage extends StatelessWidget {
                               alignment: PlaceholderAlignment.bottom,
                               child: SizedBox(
                                 width: timeWidth,
-                                height: spacerHeight,
+                                height: _timeFontSize,
                               ),
                             ),
                         ],

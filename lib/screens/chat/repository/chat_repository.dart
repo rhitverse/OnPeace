@@ -63,6 +63,34 @@ class ChatRepository {
               }
             }
 
+            String? decryptedMediaUrl;
+            if (data.containsKey('mediaUrl') && data['mediaUrl'] != null) {
+              try {
+                if (senderId == currentUid) {
+                  if (data.containsKey('mediaUrlSenderCopy') &&
+                      data['mediaUrlSenderCopy'] != null) {
+                    decryptedMediaUrl = await _encryption.decryptMessage(
+                      data['mediaUrlSenderCopy'],
+                      currentUid,
+                    );
+                  } else {
+                    decryptedMediaUrl = data['mediaUrl'];
+                  }
+                } else {
+                  if (data.containsKey('mediaUrl') &&
+                      data['mediaUrl'] != null) {
+                    decryptedMediaUrl = await _encryption.decryptMessage(
+                      data['mediaUrl'],
+                      currentUid,
+                    );
+                  }
+                }
+              } catch (e) {
+                debugPrint('Error decryoting mediaUrl: $e');
+                decryptedMediaUrl = data['mediaUrl'];
+              }
+            }
+
             messages.add({
               'id': doc.id,
               'text': text,
@@ -70,10 +98,11 @@ class ChatRepository {
               'receiverId': data['receiverId'] ?? '',
               'isRead': data['isRead'] ?? false,
               'time': time.toIso8601String(),
-              'mediaUrl': data['mediaUrl'],
+              'mediaUrl': decryptedMediaUrl,
               'mediaType': data['mediaType'],
               'fileName': data['fileName'],
               'fileSize': data['fileSize'],
+              'duration': data['duration'],
             });
           }
           return messages;

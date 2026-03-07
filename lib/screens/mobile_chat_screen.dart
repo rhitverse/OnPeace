@@ -174,6 +174,13 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                     final text = messageData['text'] ?? '';
                     final timeStr = messageData['time'];
                     final isMe = senderId == currentUserId;
+
+                    final mediaUrl = messageData['mediaUrl'];
+                    final mediaType = messageData['mediaType'];
+                    final fileName = messageData['fileName'];
+                    final fileSize = messageData['fileSize'];
+                    final duration = messageData['duration'];
+
                     String timeString = '';
                     try {
                       if (timeStr is String) {
@@ -216,6 +223,11 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                             showTail: showTail,
                             isGrouped: isGrouped,
                             showTime: showTime,
+                            mediaUrl: mediaUrl,
+                            mediaType: mediaType,
+                            fileName: fileName,
+                            fileSize: fileSize,
+                            duration: duration,
                           )
                         : ReceiverMessage(
                             text: text,
@@ -223,6 +235,11 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                             showTail: showTail,
                             isGrouped: isGrouped,
                             showTime: showTime,
+                            mediaUrl: mediaUrl,
+                            mediaType: mediaType,
+                            fileName: fileName,
+                            fileSize: fileSize,
+                            duration: duration,
                           );
                   },
                 );
