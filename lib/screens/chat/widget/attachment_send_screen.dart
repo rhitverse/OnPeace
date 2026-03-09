@@ -2,19 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:video_player/video_player.dart';
 import 'dart:io';
-import 'package:image_picker/image_picker.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:whatsapp_clone/colors.dart';
+import 'package:whatsapp_clone/screens/chat/provider/chat_provider.dart';
 
 class AttachmentSendScreen extends ConsumerStatefulWidget {
   final String chatId;
   final String receiverUid;
+  final List<FileAttachment>? initialFiles;
 
   const AttachmentSendScreen({
     super.key,
     required this.chatId,
     required this.receiverUid,
+    this.initialFiles,
   });
 
   @override
@@ -24,8 +26,22 @@ class AttachmentSendScreen extends ConsumerStatefulWidget {
 
 class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
   List<FileAttachment> selectedFiles = [];
-  bool isCompressing = false;
-  double uploadProgress = 0.0;
+  Set<int> sendingFileIndices = {};
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.initialFiles != null && widget.initialFiles!.isNotEmpty) {
+        setState(() {
+          selectedFiles = widget.initialFiles!;
+        });
+      } else {
+        _pickFiles();
+      }
+    });
+  }
 
   Future<void> _pickFiles() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -33,66 +49,25 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
       type: FileType.any,
     );
 
-    if (result != null) {
-      setState(() {
-        for (var file in result.files) {
-          if (file.path != null) {
-            selectedFiles.add(
-              FileAttachment(
-                filePath: file.path!,
-                fileName: file.name,
-                fileSize: file.size,
-                fileType: _getFileType(file.name),
-              ),
-            );
-          }
+    if (result == null) {
+      if (mounted) Navigator.pop(context);
+      return;
+    }
+
+    setState(() {
+      for (var file in result.files) {
+        if (file.path != null) {
+          selectedFiles.add(
+            FileAttachment(
+              filePath: file.path!,
+              fileName: file.name,
+              fileSize: file.size,
+              fileType: _getFileType(file.name),
+            ),
+          );
         }
-      });
-    }
-  }
-
-  Future<void> _pickImage(ImageSource source) async {
-    final picker = ImagePicker();
-    final image = await picker.pickImage(source: source);
-
-    if (image != null) {
-      final imageFile = File(image.path);
-      final fileName =
-          image.name ?? 'image_${DateTime.now().millisecondsSinceEpoch}.jpg';
-
-      setState(() {
-        selectedFiles.add(
-          FileAttachment(
-            filePath: image.path,
-            fileName: fileName,
-            fileSize: imageFile.lengthSync(),
-            fileType: FileType.image,
-          ),
-        );
-      });
-    }
-  }
-
-  Future<void> _pickVideo(ImageSource source) async {
-    final picker = ImagePicker();
-    final video = await picker.pickVideo(source: source);
-
-    if (video != null) {
-      final videoFile = File(video.path);
-      final fileName =
-          video.name ?? 'video_${DateTime.now().millisecondsSinceEpoch}.mp4';
-
-      setState(() {
-        selectedFiles.add(
-          FileAttachment(
-            filePath: video.path,
-            fileName: fileName,
-            fileSize: videoFile.lengthSync(),
-            fileType: FileType.video,
-          ),
-        );
-      });
-    }
+      }
+    });
   }
 
   FileType _getFileType(String fileName) {
@@ -107,41 +82,39 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
     return FileType.custom;
   }
 
-  Future<void> _compressImages() async {
-    setState(() => isCompressing = true);
+  void _removeFile(int index) {
+    setState(() => selectedFiles.removeAt(index));
+  }
 
+  Future<int> _getVideoDuration(String videoPath) async {
     try {
-      for (int i = 0; i < selectedFiles.length; i++) {
-        if (selectedFiles[i].fileType == FileType.image) {
-          final compressed = await FlutterImageCompress.compressAndGetFile(
-            selectedFiles[i].filePath,
-            '${Directory.systemTemp.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg',
-            quality: 80,
-            minWidth: 1920,
-            minHeight: 1080,
-          );
-
-          if (compressed != null) {
-            selectedFiles[i].filePath = compressed.path;
-            selectedFiles[i].fileSize = File(compressed.path).lengthSync();
-          }
-        }
-        setState(() => uploadProgress = (i + 1) / selectedFiles.length);
-      }
+      final controller = VideoPlayerController.file(File(videoPath));
+      await controller.initialize();
+      final duration = controller.value.duration.inSeconds;
+      await controller.dispose();
+      return duration;
     } catch (e) {
-      debugPrint('Compression error: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Compression error: $e')));
-      }
-    } finally {
-      setState(() => isCompressing = false);
+      debugPrint('Error getting video duration: $e');
+      return 0;
     }
   }
 
-  void _removeFile(int index) {
-    setState(() => selectedFiles.removeAt(index));
+  String _getMediaType(String fileName) {
+    final ext = fileName.split('.').last.toLowerCase();
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].contains(ext)) {
+      return 'image';
+    } else if (['mp4', 'avi', 'mkv', 'mov', 'flv'].contains(ext)) {
+      return 'video';
+    } else if (['pdf'].contains(ext)) {
+      return 'pdf';
+    } else if (['doc', 'docx'].contains(ext)) {
+      return 'doc';
+    } else if (['xls', 'xlsx'].contains(ext)) {
+      return 'xlsx';
+    } else if (['mp3', 'wav', 'aac'].contains(ext)) {
+      return 'audio';
+    }
+    return 'file';
   }
 
   Future<void> _sendFiles() async {
@@ -150,28 +123,79 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
     if (currentUserId == null) return;
 
-    setState(() => isCompressing = true);
-
     try {
+      final chatController = ref.read(chatControllerProvider);
+
       for (int i = 0; i < selectedFiles.length; i++) {
-        setState(() => uploadProgress = (i + 1) / selectedFiles.length);
-        await Future.delayed(const Duration(milliseconds: 500));
+        final file = selectedFiles[i];
+        final fileObj = File(file.filePath);
+
+        setState(() => sendingFileIndices.add(i));
+        final mediaType = _getMediaType(file.fileName);
+
+        try {
+          if (mediaType == 'image') {
+            await chatController.sendImage(
+              chatId: widget.chatId,
+              senderId: currentUserId,
+              imageFile: fileObj,
+              receiverId: widget.receiverUid,
+            );
+          } else if (mediaType == 'video') {
+            final duration = await _getVideoDuration(file.filePath);
+            await chatController.sendVideo(
+              chatId: widget.chatId,
+              senderId: currentUserId,
+              videoFile: fileObj,
+              receiverId: widget.receiverUid,
+              duration: duration,
+            );
+          } else {
+            await chatController.sendFile(
+              chatId: widget.chatId,
+              senderId: currentUserId,
+              file: fileObj,
+              receiverId: widget.receiverUid,
+              fileType: mediaType,
+            );
+          }
+
+          setState(() => sendingFileIndices.remove(i));
+          debugPrint('File ${file.fileName} sent successfully!');
+        } catch (e) {
+          setState(() => sendingFileIndices.remove(i));
+          debugPrint('Error sending file ${file.fileName}: $e');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error sending ${file.fileName}: $e'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
       }
 
-      if (mounted) {
+      if (mounted && sendingFileIndices.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Files sent successfully!')),
+          SnackBar(
+            content: Text(
+              '${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''} sent successfully!',
+            ),
+            backgroundColor: uiColor,
+          ),
         );
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error sending files: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error sending files: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
-    } finally {
-      setState(() => isCompressing = false);
     }
   }
 
@@ -182,55 +206,15 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
       appBar: AppBar(
         backgroundColor: backgroundColor,
         elevation: 0,
-        title: const Text('Send Attachments'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          if (selectedFiles.isNotEmpty)
-            TextButton.icon(
-              onPressed: isCompressing ? null : _compressImages,
-              icon: const Icon(Icons.compress),
-              label: const Text('Compress'),
-            ),
-        ],
       ),
       body: Column(
         children: [
-          Expanded(
-            child: selectedFiles.isEmpty
-                ? _buildEmptyState()
-                : _buildFilesList(),
-          ),
-          if (isCompressing) _buildProgressIndicator(),
+          Expanded(child: _buildFilesList()),
           _buildActionButtons(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProgressIndicator() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: LinearProgressIndicator(
-              value: uploadProgress,
-              minHeight: 8,
-              backgroundColor: Colors.grey[800],
-              valueColor: const AlwaysStoppedAnimation<Color>(
-                Color(0xff25D366),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${(uploadProgress * 100).toStringAsFixed(0)}%',
-            style: const TextStyle(color: whiteColor),
-          ),
         ],
       ),
     );
@@ -259,110 +243,18 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: ElevatedButton.icon(
-              onPressed: selectedFiles.isEmpty || isCompressing
+              onPressed: selectedFiles.isEmpty || sendingFileIndices.isNotEmpty
                   ? null
                   : _sendFiles,
               icon: const Icon(Icons.send),
               label: const Text('Send'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xff25D366),
-                foregroundColor: Colors.white,
+                backgroundColor: uiColor,
+                foregroundColor: whiteColor,
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(30),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.grey[900],
-            ),
-            child: Icon(
-              Icons.cloud_upload_outlined,
-              size: 60,
-              color: Colors.grey[600],
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'No files selected',
-            style: TextStyle(
-              color: Colors.grey[400],
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Select photos, videos, PDFs or any file',
-            style: TextStyle(color: Colors.grey[500], fontSize: 14),
-          ),
-          const SizedBox(height: 32),
-          _buildQuickActionButtons(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickActionButtons() {
-    return Wrap(
-      spacing: 16,
-      runSpacing: 16,
-      children: [
-        _quickActionButton(
-          icon: Icons.photo_library,
-          label: 'Gallery',
-          onTap: () => _pickImage(ImageSource.gallery),
-        ),
-        _quickActionButton(
-          icon: Icons.camera_alt,
-          label: 'Camera',
-          onTap: () => _pickImage(ImageSource.camera),
-        ),
-        _quickActionButton(
-          icon: Icons.videocam,
-          label: 'Video',
-          onTap: () => _pickVideo(ImageSource.gallery),
-        ),
-        _quickActionButton(
-          icon: Icons.folder_open,
-          label: 'Files',
-          onTap: _pickFiles,
-        ),
-      ],
-    );
-  }
-
-  Widget _quickActionButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey[900],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[800]!, width: 1),
-            ),
-            child: Icon(icon, color: const Color(0xff25D366), size: 28),
-          ),
-          const SizedBox(height: 8),
-          Text(label, style: const TextStyle(color: whiteColor, fontSize: 12)),
         ],
       ),
     );
@@ -387,8 +279,8 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
         child: Row(
           children: [
             Container(
-              width: 70,
-              height: 70,
+              width: 50,
+              height: 50,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
                 color: Colors.grey[800],
@@ -437,7 +329,9 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
           errorBuilder: (context, error, stackTrace) {
             return Container(
               color: Colors.grey[800],
-              child: const Icon(Icons.error, color: Colors.red),
+              child: const Center(
+                child: Icon(Icons.broken_image, color: Colors.red, size: 32),
+              ),
             );
           },
         ),
@@ -450,10 +344,13 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
             borderRadius: BorderRadius.circular(8),
             child: Container(color: Colors.grey[800]),
           ),
-          const Icon(
-            Icons.play_circle_filled,
-            color: Color(0xff25D366),
-            size: 32,
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.black.withOpacity(0.4),
+            ),
+            padding: const EdgeInsets.all(8),
+            child: const Icon(Icons.play_arrow, color: Colors.white, size: 32),
           ),
         ],
       );

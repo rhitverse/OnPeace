@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -99,16 +100,50 @@ class _BottomChatFieldState extends ConsumerState<BottomChatField>
       _showAttachment = false;
       _animController.reverse();
     });
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AttachmentSendScreen(
-          chatId: widget.chatId,
-          receiverUid: widget.receiverUid,
-        ),
-      ),
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      allowMultiple: true,
+      type: FileType.any,
     );
+    if (result == null) return;
+    if (!mounted) return;
+
+    List<FileAttachment> files = [];
+    for (var file in result.files) {
+      if (file.path != null) {
+        files.add(
+          FileAttachment(
+            filePath: file.path!,
+            fileName: file.name,
+            fileSize: file.size,
+            fileType: _getFileType(file.name),
+          ),
+        );
+      }
+    }
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AttachmentSendScreen(
+            chatId: widget.chatId,
+            receiverUid: widget.receiverUid,
+            initialFiles: files,
+          ),
+        ),
+      );
+    }
+  }
+
+  FileType _getFileType(String fileName) {
+    final ext = fileName.split('.').last.toLowerCase();
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].contains(ext)) {
+      return FileType.image;
+    } else if (['mp4', 'avi', 'mov', 'flv'].contains(ext)) {
+      return FileType.video;
+    } else if (['pdf', 'doc', 'docx', 'txt', 'xlsx', 'xls'].contains(ext)) {
+      return FileType.custom;
+    }
+    return FileType.custom;
   }
 
   void _openGalleryAttachment() {

@@ -61,6 +61,7 @@ dependencies:
   video_player: ^2.11.0
   video_thumbnail: ^0.5.6
   agora_rtc_engine: ^6.5.3
+  uuid: ^4.5.3
 
 dev_dependencies:
   flutter_test:

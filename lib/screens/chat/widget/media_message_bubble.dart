@@ -237,7 +237,7 @@ class _MediaMessageBubbleState extends State<MediaMessageBubble> {
                 ? child
                 : Container(
                     width: maxWidth,
-                    height: 350,
+                    height: MediaQuery.of(context).size.height * 0.42,
                     color: Colors.grey[800],
                     child: const Center(
                       child: CircularProgressIndicator(color: uiColor),
@@ -284,7 +284,7 @@ class _MediaMessageBubbleState extends State<MediaMessageBubble> {
                 ? Image.memory(
                     _thumbnailData!,
                     width: maxWidth,
-                    height: 420,
+                    height: MediaQuery.of(context).size.height * 0.42,
                     fit: BoxFit.cover,
                   )
                 : Container(
@@ -332,12 +332,21 @@ class _MediaMessageBubbleState extends State<MediaMessageBubble> {
       onTap: () => _openFile(widget.mediaUrl),
       child: Container(
         width: maxWidth,
-        padding: const EdgeInsets.all(12),
-        color: Colors.grey[900],
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.grey[900],
+          borderRadius: BorderRadius.circular(15),
+        ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(_getFileIcon(widget.mediaType), color: uiColor, size: 32),
+            Center(
+              child: Icon(
+                _getFileIcon(widget.mediaType),
+                color: uiColor,
+                size: 32,
+              ),
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
