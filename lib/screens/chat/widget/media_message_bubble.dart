@@ -17,6 +17,7 @@ class MediaMessageBubble extends StatefulWidget {
   final bool showTail;
   final bool isGrouped;
   final bool showTime;
+  final bool isLoading;
 
   const MediaMessageBubble({
     super.key,
@@ -30,6 +31,7 @@ class MediaMessageBubble extends StatefulWidget {
     this.showTail = true,
     this.isGrouped = false,
     this.showTime = true,
+    this.isLoading = false,
   });
 
   @override
@@ -341,10 +343,26 @@ class _MediaMessageBubbleState extends State<MediaMessageBubble> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Center(
-              child: Icon(
-                _getFileIcon(widget.mediaType),
-                color: uiColor,
-                size: 32,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Icon(
+                    _getFileIcon(widget.mediaType),
+                    color: uiColor,
+                    size: 32,
+                  ),
+                  if (widget.isLoading)
+                    SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          uiColor.withOpacity(0.7),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
             const SizedBox(width: 12),
@@ -369,9 +387,18 @@ class _MediaMessageBubbleState extends State<MediaMessageBubble> {
                       _formatFileSize(widget.fileSize!),
                       style: const TextStyle(color: Colors.grey, fontSize: 11),
                     ),
+                  if (widget.isLoading)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        'Sending...',
+                        style: TextStyle(color: uiColor, fontSize: 10),
+                      ),
+                    ),
                 ],
               ),
             ),
+            if (widget.isLoading) Icon(Icons.close, color: uiColor, size: 20),
           ],
         ),
       ),

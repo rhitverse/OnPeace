@@ -6,17 +6,20 @@ import 'package:video_player/video_player.dart';
 import 'dart:io';
 import 'package:whatsapp_clone/colors.dart';
 import 'package:whatsapp_clone/screens/chat/provider/chat_provider.dart';
+import 'package:whatsapp_clone/screens/chat/provider/uploading_messages_provider.dart';
 
 class AttachmentSendScreen extends ConsumerStatefulWidget {
   final String chatId;
   final String receiverUid;
   final List<FileAttachment>? initialFiles;
+  final Function? onFileUploadStart;
 
   const AttachmentSendScreen({
     super.key,
     required this.chatId,
     required this.receiverUid,
     this.initialFiles,
+    this.onFileUploadStart,
   });
 
   @override
@@ -117,6 +120,10 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
     return 'file';
   }
 
+  void _cancelFileSend(int index) {
+    setState(() => sendingFileIndices.remove(index));
+  }
+
   Future<void> _sendFiles() async {
     if (selectedFiles.isEmpty) return;
 
@@ -125,17 +132,23 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
 
     try {
       final chatController = ref.read(chatControllerProvider);
+      final uploadingMessagesNotifier = ref.read(
+        uploadingMessagesProvider.notifier,
+      );
 
       for (int i = 0; i < selectedFiles.length; i++) {
         final file = selectedFiles[i];
         final fileObj = File(file.filePath);
 
         setState(() => sendingFileIndices.add(i));
+
         final mediaType = _getMediaType(file.fileName);
 
         try {
+          String? messageId;
+
           if (mediaType == 'image') {
-            await chatController.sendImage(
+            messageId = await chatController.sendImageAndGetId(
               chatId: widget.chatId,
               senderId: currentUserId,
               imageFile: fileObj,
@@ -143,7 +156,7 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
             );
           } else if (mediaType == 'video') {
             final duration = await _getVideoDuration(file.filePath);
-            await chatController.sendVideo(
+            messageId = await chatController.sendVideoAndGetId(
               chatId: widget.chatId,
               senderId: currentUserId,
               videoFile: fileObj,
@@ -151,13 +164,18 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
               duration: duration,
             );
           } else {
-            await chatController.sendFile(
+            messageId = await chatController.sendFileAndGetId(
               chatId: widget.chatId,
               senderId: currentUserId,
               file: fileObj,
               receiverId: widget.receiverUid,
               fileType: mediaType,
             );
+          }
+
+          // ✅ Use actual Firestore message ID for tracking
+          if (messageId != null) {
+            uploadingMessagesNotifier.removeUploading(messageId);
           }
 
           setState(() => sendingFileIndices.remove(i));
@@ -182,7 +200,7 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
             content: Text(
               '${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''} sent successfully!',
             ),
-            backgroundColor: uiColor,
+            backgroundColor: Colors.green,
           ),
         );
         Navigator.pop(context);
@@ -249,8 +267,8 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
               icon: const Icon(Icons.send),
               label: const Text('Send'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: uiColor,
-                foregroundColor: whiteColor,
+                backgroundColor: const Color(0xff25D366),
+                foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
@@ -271,6 +289,8 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
   }
 
   Widget _buildFileCard(FileAttachment file, int index) {
+    final isSending = sendingFileIndices.contains(index);
+
     return Card(
       color: Colors.grey[900],
       margin: const EdgeInsets.only(bottom: 12),
@@ -279,8 +299,8 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
         child: Row(
           children: [
             Container(
-              width: 50,
-              height: 50,
+              width: 70,
+              height: 70,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
                 color: Colors.grey[800],
@@ -306,12 +326,29 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
                     _formatFileSize(file.fileSize),
                     style: TextStyle(color: Colors.grey[500], fontSize: 12),
                   ),
+                  if (isSending)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        'Sending...',
+                        style: TextStyle(
+                          color: Colors.orange,
+                          fontSize: 10,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.close, color: Colors.red),
-              onPressed: () => _removeFile(index),
+              icon: Icon(
+                Icons.close,
+                color: isSending ? Colors.orange : Colors.red,
+              ),
+              onPressed: isSending
+                  ? () => _cancelFileSend(index)
+                  : () => _removeFile(index),
             ),
           ],
         ),

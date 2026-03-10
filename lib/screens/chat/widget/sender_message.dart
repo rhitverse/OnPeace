@@ -16,6 +16,7 @@ class SenderMessage extends StatelessWidget {
   final String? fileName;
   final int? fileSize;
   final int? duration;
+  final bool isLoading;
 
   const SenderMessage({
     super.key,
@@ -29,6 +30,7 @@ class SenderMessage extends StatelessWidget {
     this.fileName,
     this.fileSize,
     this.duration,
+    this.isLoading = false,
   });
 
   static const double _fontSize = 15.0;
@@ -60,6 +62,7 @@ class SenderMessage extends StatelessWidget {
         showTail: showTail,
         isGrouped: isGrouped,
         showTime: showTime,
+        isLoading: isLoading,
       );
     }
     final timeWidth = showTime ? _getTimeWidth(context) : 0.0;

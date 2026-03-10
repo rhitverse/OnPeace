@@ -58,6 +58,24 @@ class ChatController {
     }
   }
 
+  Future<String?> sendImageAndGetId({
+    required String chatId,
+    required String senderId,
+    required File imageFile,
+    required String receiverId,
+  }) async {
+    try {
+      return await _chatRepository.sendImageAndGetId(
+        chatId: chatId,
+        senderId: senderId,
+        imageFile: imageFile,
+        receiverId: receiverId,
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<void> sendVideo({
     required String chatId,
     required String senderId,
@@ -67,6 +85,26 @@ class ChatController {
   }) async {
     try {
       await _chatRepository.sendVideo(
+        chatId: chatId,
+        senderId: senderId,
+        videoFile: videoFile,
+        receiverId: receiverId,
+        duration: duration,
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<String?> sendVideoAndGetId({
+    required String chatId,
+    required String senderId,
+    required File videoFile,
+    required String receiverId,
+    required int duration,
+  }) async {
+    try {
+      return await _chatRepository.sendVideoAndGetId(
         chatId: chatId,
         senderId: senderId,
         videoFile: videoFile,
@@ -107,6 +145,26 @@ class ChatController {
   }) async {
     try {
       await _chatRepository.sendFile(
+        chatId: chatId,
+        senderId: senderId,
+        file: file,
+        receiverId: receiverId,
+        fileType: fileType,
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<String?> sendFileAndGetId({
+    required String chatId,
+    required String senderId,
+    required File file,
+    required String receiverId,
+    required String fileType,
+  }) async {
+    try {
+      return await _chatRepository.sendFileAndGetId(
         chatId: chatId,
         senderId: senderId,
         file: file,

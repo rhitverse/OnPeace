@@ -8,6 +8,7 @@ import 'package:whatsapp_clone/screens/chat/provider/chat_provider.dart';
 import 'package:whatsapp_clone/screens/chat/widget/bottom_chat_field.dart';
 import 'package:whatsapp_clone/screens/chat/widget/receiver_message.dart';
 import 'package:whatsapp_clone/screens/chat/widget/sender_message.dart';
+import 'package:whatsapp_clone/screens/chat/provider/uploading_messages_provider.dart';
 
 class MobileChatScreen extends ConsumerStatefulWidget {
   final String chatId;
@@ -95,7 +96,7 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
   @override
   Widget build(BuildContext context) {
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
-
+    final uploadingMessages = ref.watch(uploadingMessagesProvider);
     return Scaffold(
       backgroundColor: backgroundColor,
       resizeToAvoidBottomInset: !showEmoji,
@@ -193,6 +194,9 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                     final fileSize = messageData['fileSize'];
                     final duration = messageData['duration'];
 
+                    final messageId = messageData['id'] ?? '';
+                    final isLoading = uploadingMessages.contains(messageId);
+
                     String timeString = '';
                     try {
                       if (timeStr is String) {
@@ -240,6 +244,7 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                             fileName: fileName,
                             fileSize: fileSize,
                             duration: duration,
+                            isLoading: isLoading,
                           )
                         : ReceiverMessage(
                             text: text,
@@ -252,6 +257,7 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                             fileName: fileName,
                             fileSize: fileSize,
                             duration: duration,
+                            isLoading: isLoading,
                           );
                   },
                 );

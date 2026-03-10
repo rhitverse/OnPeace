@@ -16,6 +16,7 @@ class ReceiverMessage extends StatelessWidget {
   final String? fileName;
   final int? fileSize;
   final int? duration;
+  final bool isLoading;
   const ReceiverMessage({
     super.key,
     required this.text,
@@ -28,6 +29,7 @@ class ReceiverMessage extends StatelessWidget {
     this.fileName,
     this.fileSize,
     this.duration,
+    this.isLoading = false,
   });
 
   static const double _fontSize = 16.0;
@@ -59,6 +61,7 @@ class ReceiverMessage extends StatelessWidget {
         showTail: showTail,
         isGrouped: isGrouped,
         showTime: showTime,
+        isLoading: isLoading,
       );
     }
     final timeWidth = showTime ? _getTimeWidth(context) : 0.0;
