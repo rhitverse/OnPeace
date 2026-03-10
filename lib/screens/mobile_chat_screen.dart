@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:whatsapp_clone/colors.dart';
 import 'package:whatsapp_clone/screens/chat/provider/chat_provider.dart';
 import 'package:whatsapp_clone/screens/chat/widget/bottom_chat_field.dart';
+import 'package:whatsapp_clone/screens/chat/widget/chat_loader.dart';
 import 'package:whatsapp_clone/screens/chat/widget/receiver_message.dart';
 import 'package:whatsapp_clone/screens/chat/widget/sender_message.dart';
 import 'package:whatsapp_clone/screens/chat/provider/uploading_messages_provider.dart';
@@ -167,7 +168,10 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                   .read(chatControllerProvider)
                   .getMessagesStream(widget.chatId),
               builder: (context, snapshot) {
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                if (!snapshot.hasData) {
+                  return const ChatLoader();
+                }
+                if (snapshot.data!.isEmpty) {
                   return const SizedBox();
                 }
 
