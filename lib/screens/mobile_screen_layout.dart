@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:whatsapp_clone/colors.dart';
 import 'package:whatsapp_clone/screens/Notifications/notification_screen.dart';
 import 'package:whatsapp_clone/screens/chat/Screens/chats_control.dart';
+import 'package:whatsapp_clone/screens/diary/screen/diary_screen.dart';
 import 'package:whatsapp_clone/screens/friends/friends_newchat.dart';
 import 'package:whatsapp_clone/screens/friends/qr_scanner.dart';
 import 'package:whatsapp_clone/screens/friends/user_search.dart';
@@ -70,6 +71,28 @@ class _MobileScreenLayoutState extends ConsumerState<MobileScreenLayout> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(builder: (_) => const UserSearch()),
+                        );
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(
+                        Icons.bookmark_add,
+                        color: whiteColor,
+                      ),
+                      title: const Text(
+                        "Dear Diary",
+                        style: TextStyle(
+                          color: whiteColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      onTap: () {
+                        _toggleMenu(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const DiaryScreen(),
+                          ),
                         );
                       },
                     ),

@@ -1,6 +1,10 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:dio/dio.dart';
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 import 'package:whatsapp_clone/colors.dart';
 import 'package:whatsapp_clone/screens/chat/widget/full_screen_image.dart';
@@ -18,6 +22,9 @@ class MediaMessageBubble extends StatefulWidget {
   final bool isGrouped;
   final bool showTime;
   final bool isLoading;
+  final bool isUploading;
+  final String? localFilePath;
+  final VoidCallback? onCancelUpload;
 
   const MediaMessageBubble({
     super.key,
@@ -32,6 +39,9 @@ class MediaMessageBubble extends StatefulWidget {
     this.isGrouped = false,
     this.showTime = true,
     this.isLoading = false,
+    this.isUploading = false,
+    this.localFilePath,
+    this.onCancelUpload,
   });
 
   @override
@@ -41,85 +51,207 @@ class MediaMessageBubble extends StatefulWidget {
 class _MediaMessageBubbleState extends State<MediaMessageBubble> {
   Uint8List? _thumbnailData;
   bool _isLoadingThumbnail = true;
+  bool _isDownloading = false;
+  double _downloadProgress = 0;
+  bool _isDownloaded = false;
+  String? _localFilePath;
 
   @override
   void initState() {
     super.initState();
-    if (widget.mediaType == 'video') {
+    if (widget.mediaType == 'video' && !widget.isUploading) {
       _generateThumbnail();
+    } else {
+      _isLoadingThumbnail = false;
+    }
+    if (!widget.isUploading) _checkIfDownloaded();
+  }
+
+  String _safeName(String? name) => (name ?? 'document').replaceAll(' ', '_');
+
+  Future<String> _getDownloadPath() async {
+    if (Platform.isAndroid) {
+      const path = '/storage/emulated/0/Download';
+      if (await Directory(path).exists()) return path;
+    }
+    final dir = await getApplicationDocumentsDirectory();
+    return dir.path;
+  }
+
+  Future<void> _checkIfDownloaded() async {
+    final dirPath = await _getDownloadPath();
+    final path = '$dirPath/${_safeName(widget.fileName)}';
+    if (File(path).existsSync()) {
+      if (mounted)
+        setState(() {
+          _localFilePath = path;
+          _isDownloaded = true;
+        });
     }
   }
 
   Future<void> _generateThumbnail() async {
     try {
-      final uint8list = await VideoThumbnail.thumbnailData(
+      final data = await VideoThumbnail.thumbnailData(
         video: widget.mediaUrl,
         imageFormat: ImageFormat.PNG,
         maxHeight: 300,
         quality: 75,
       );
-      if (mounted) {
+      if (mounted)
         setState(() {
-          _thumbnailData = uint8list;
+          _thumbnailData = data;
           _isLoadingThumbnail = false;
         });
-      }
-    } catch (e) {
-      debugPrint('Error generating thumbnail: $e');
-      if (mounted) {
-        setState(() {
-          _isLoadingThumbnail = false;
-        });
-      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingThumbnail = false);
     }
   }
 
-  Future<void> _openFile(String url) async {
+  Future<int> _getAndroidSdkInt() async {
     try {
-      final Uri uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (Platform.isAndroid) {
+        final result = await Process.run('getprop', ['ro.build.version.sdk']);
+        return int.tryParse(result.stdout.toString().trim()) ?? 30;
       }
+    } catch (_) {}
+    return 30;
+  }
+
+  Future<void> _downloadFile() async {
+    if (_isDownloading) return;
+
+    // ✅ Android 13+ mein Permission.storage deprecated hai
+    // MANAGE_EXTERNAL_STORAGE already manifest mein hai — direct download karo
+    if (Platform.isAndroid) {
+      final sdkInt = await _getAndroidSdkInt();
+      if (sdkInt < 30) {
+        // Android 9/10 ke liye old permission
+        final status = await Permission.storage.request();
+        if (!status.isGranted) {
+          if (mounted)
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Storage permission required'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          return;
+        }
+      }
+      // Android 11+ (API 30+): MANAGE_EXTERNAL_STORAGE manifest mein hai, direct access milta hai
+    }
+
+    setState(() {
+      _isDownloading = true;
+      _downloadProgress = 0;
+    });
+    try {
+      final dirPath = await _getDownloadPath();
+      final filePath = '$dirPath/${_safeName(widget.fileName)}';
+
+      final existingFile = File(filePath);
+      if (existingFile.existsSync()) existingFile.deleteSync();
+
+      final dio = Dio();
+      dio.options = BaseOptions(
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 120),
+        headers: {'Accept': '*/*', 'User-Agent': 'Mozilla/5.0'},
+      );
+
+      final isPdfOrDoc = [
+        'pdf',
+        'doc',
+        'docx',
+        'xls',
+        'xlsx',
+        'ppt',
+        'pptx',
+        'txt',
+      ].any((ext) => (widget.fileName ?? '').toLowerCase().endsWith(ext));
+
+      String downloadUrl = widget.mediaUrl;
+      if (isPdfOrDoc && downloadUrl.contains('/image/upload/')) {
+        downloadUrl = downloadUrl.replaceFirst(
+          '/image/upload/',
+          '/image/upload/fl_attachment/',
+        );
+        debugPrint('fl_attachment URL: $downloadUrl');
+      }
+
+      await dio.download(
+        downloadUrl,
+        filePath,
+        deleteOnError: true,
+        onReceiveProgress: (r, t) {
+          if (t != -1 && mounted) setState(() => _downloadProgress = r / t);
+        },
+      );
+
+      final downloadedFile = File(filePath);
+      if (!downloadedFile.existsSync() || downloadedFile.lengthSync() == 0) {
+        throw Exception('Downloaded file is empty or missing');
+      }
+
+      if (mounted)
+        setState(() {
+          _isDownloading = false;
+          _isDownloaded = true;
+          _localFilePath = filePath;
+        });
+      await OpenFile.open(filePath);
     } catch (e) {
-      debugPrint('Error opening file: $e');
+      debugPrint('Download error: $e');
+      try {
+        final dirPath = await _getDownloadPath();
+        final f = File('$dirPath/${_safeName(widget.fileName)}');
+        if (f.existsSync()) f.deleteSync();
+      } catch (_) {}
+      if (mounted) {
+        setState(() {
+          _isDownloading = false;
+          _downloadProgress = 0;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Download failed: ${e.toString().substring(0, e.toString().length.clamp(0, 80))}',
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
     }
   }
 
-  void _openFullScreenImage(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => FullScreenImage(
-          imageUrl: widget.mediaUrl,
-          fileName: widget.fileName,
-        ),
+  void _openFullScreenImage() => Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) =>
+          FullScreenImage(imageUrl: widget.mediaUrl, fileName: widget.fileName),
+    ),
+  );
+
+  void _openVideoPlayer() => Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => VideoPlayerScreen(
+        videoUrl: widget.mediaUrl,
+        fileName: widget.fileName,
       ),
-    );
+    ),
+  );
+
+  String _formatFileSize(int b) {
+    if (b < 1024) return '$b B';
+    if (b < 1024 * 1024) return '${(b / 1024).toStringAsFixed(1)} KB';
+    return '${(b / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
-  void _openVideoPlayer(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => VideoPlayerScreen(
-          videoUrl: widget.mediaUrl,
-          fileName: widget.fileName,
-        ),
-      ),
-    );
-  }
-
-  String _formatFileSize(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-  }
-
-  String _formatDuration(int seconds) {
-    final minutes = seconds ~/ 60;
-    final secs = seconds % 60;
-    return '$minutes:${secs.toString().padLeft(2, '0')}';
-  }
+  String _formatDuration(int s) =>
+      '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
 
   @override
   Widget build(BuildContext context) {
@@ -130,33 +262,27 @@ class _MediaMessageBubbleState extends State<MediaMessageBubble> {
       ),
       child: Align(
         alignment: widget.isMe ? Alignment.centerRight : Alignment.centerLeft,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.65,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: widget.isMe
-                    ? CrossAxisAlignment.end
-                    : CrossAxisAlignment.start,
-                children: [
-                  _buildMediaContent(context),
-
-                  if (widget.showTime)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 4, 12, 6),
-                      child: Text(
-                        widget.time,
-                        style: const TextStyle(color: whiteColor, fontSize: 11),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.65,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: widget.isMe
+                ? CrossAxisAlignment.end
+                : CrossAxisAlignment.start,
+            children: [
+              _buildMediaContent(context),
+              if (widget.showTime)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 6),
+                  child: Text(
+                    widget.time,
+                    style: const TextStyle(color: whiteColor, fontSize: 11),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -164,25 +290,157 @@ class _MediaMessageBubbleState extends State<MediaMessageBubble> {
 
   Widget _buildMediaContent(BuildContext context) {
     final maxWidth = MediaQuery.of(context).size.width * 0.65 - 16;
-
+    if (widget.isUploading && widget.localFilePath != null) {
+      return _buildUploadingOverlay(context, maxWidth);
+    }
     switch (widget.mediaType) {
       case 'image':
         return _buildImageContent(context, maxWidth);
-
       case 'gif':
         return _buildGifContent(maxWidth);
-
       case 'video':
         return _buildVideoContent(context, maxWidth);
-
       default:
         return _buildFileContent(maxWidth);
     }
   }
 
+  Widget _buildUploadingOverlay(BuildContext context, double maxWidth) {
+    final height = MediaQuery.of(context).size.height * 0.42;
+    final isVideo = widget.mediaType == 'video';
+    final isFile = !['image', 'video', 'gif'].contains(widget.mediaType);
+
+    if (isFile) return _buildFileUploadingContent(maxWidth);
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          isVideo
+              ? Container(
+                  width: maxWidth,
+                  height: height,
+                  color: Colors.grey[850],
+                  child: const Center(
+                    child: Icon(
+                      Icons.videocam,
+                      color: Colors.white24,
+                      size: 52,
+                    ),
+                  ),
+                )
+              : Image.file(
+                  File(widget.localFilePath!),
+                  width: maxWidth,
+                  height: height,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: maxWidth,
+                    height: height,
+                    color: Colors.grey[850],
+                  ),
+                ),
+          Positioned.fill(
+            child: Container(color: Colors.black.withOpacity(0.42)),
+          ),
+          GestureDetector(
+            onTap: widget.onCancelUpload,
+            child: SizedBox(
+              width: 58,
+              height: 58,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  SizedBox(
+                    width: 58,
+                    height: 58,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.8,
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                        Colors.white,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.35),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFileUploadingContent(double maxWidth) {
+    return Container(
+      width: maxWidth,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Row(
+        children: [
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Icon(_getFileIcon(widget.mediaType), color: uiColor, size: 34),
+              SizedBox(
+                width: 46,
+                height: 46,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    uiColor.withOpacity(0.6),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.fileName ?? 'File',
+                  style: const TextStyle(
+                    color: whiteColor,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'Sending...',
+                  style: TextStyle(color: uiColor, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildGifContent(double maxWidth) {
     return GestureDetector(
-      onTap: () => _openFullScreenImage(context),
+      onTap: _openFullScreenImage,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: ConstrainedBox(
@@ -190,34 +448,30 @@ class _MediaMessageBubbleState extends State<MediaMessageBubble> {
           child: Image.network(
             widget.mediaUrl,
             fit: BoxFit.fitWidth,
-            loadingBuilder: (context, child, progress) {
-              return progress == null
-                  ? child
-                  : Container(
-                      constraints: BoxConstraints(
-                        maxWidth: maxWidth,
-                        minHeight: 200,
-                      ),
-                      color: Colors.grey[800],
-                      child: const Center(
-                        child: CircularProgressIndicator(color: uiColor),
-                      ),
-                    );
-            },
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                constraints: BoxConstraints(maxWidth: maxWidth),
-                color: Colors.grey[800],
-                padding: const EdgeInsets.all(20),
-                child: const Center(
-                  child: Icon(
-                    Icons.broken_image,
-                    color: Colors.white54,
-                    size: 50,
+            loadingBuilder: (_, child, p) => p == null
+                ? child
+                : Container(
+                    constraints: BoxConstraints(
+                      maxWidth: maxWidth,
+                      minHeight: 200,
+                    ),
+                    color: Colors.grey[800],
+                    child: const Center(
+                      child: CircularProgressIndicator(color: uiColor),
+                    ),
                   ),
+            errorBuilder: (_, __, ___) => Container(
+              constraints: BoxConstraints(maxWidth: maxWidth),
+              color: Colors.grey[800],
+              padding: const EdgeInsets.all(20),
+              child: const Center(
+                child: Icon(
+                  Icons.broken_image,
+                  color: Colors.white54,
+                  size: 50,
                 ),
-              );
-            },
+              ),
+            ),
           ),
         ),
       ),
@@ -226,7 +480,7 @@ class _MediaMessageBubbleState extends State<MediaMessageBubble> {
 
   Widget _buildImageContent(BuildContext context, double maxWidth) {
     return GestureDetector(
-      onTap: () => _openFullScreenImage(context),
+      onTap: _openFullScreenImage,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: Image.network(
@@ -234,32 +488,24 @@ class _MediaMessageBubbleState extends State<MediaMessageBubble> {
           fit: BoxFit.cover,
           width: maxWidth,
           height: MediaQuery.of(context).size.height * 0.42,
-          loadingBuilder: (context, child, progress) {
-            return progress == null
-                ? child
-                : Container(
-                    width: maxWidth,
-                    height: MediaQuery.of(context).size.height * 0.42,
-                    color: Colors.grey[800],
-                    child: const Center(
-                      child: CircularProgressIndicator(color: uiColor),
-                    ),
-                  );
-          },
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              width: maxWidth,
-              height: MediaQuery.of(context).size.height * 0.42,
-              color: Colors.grey[800],
-              child: const Center(
-                child: Icon(
-                  Icons.broken_image,
-                  color: Colors.white54,
-                  size: 50,
+          loadingBuilder: (_, child, p) => p == null
+              ? child
+              : Container(
+                  width: maxWidth,
+                  height: MediaQuery.of(context).size.height * 0.42,
+                  color: Colors.grey[800],
+                  child: const Center(
+                    child: CircularProgressIndicator(color: uiColor),
+                  ),
                 ),
-              ),
-            );
-          },
+          errorBuilder: (_, __, ___) => Container(
+            width: maxWidth,
+            height: MediaQuery.of(context).size.height * 0.42,
+            color: Colors.grey[800],
+            child: const Center(
+              child: Icon(Icons.broken_image, color: Colors.white54, size: 50),
+            ),
+          ),
         ),
       ),
     );
@@ -267,7 +513,7 @@ class _MediaMessageBubbleState extends State<MediaMessageBubble> {
 
   Widget _buildVideoContent(BuildContext context, double maxWidth) {
     return GestureDetector(
-      onTap: () => _openVideoPlayer(context),
+      onTap: _openVideoPlayer,
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -303,7 +549,6 @@ class _MediaMessageBubbleState extends State<MediaMessageBubble> {
             padding: const EdgeInsets.all(12),
             child: const Icon(Icons.play_arrow, color: Colors.white, size: 40),
           ),
-
           if (widget.duration != null)
             Positioned(
               bottom: 8,
@@ -331,74 +576,115 @@ class _MediaMessageBubbleState extends State<MediaMessageBubble> {
 
   Widget _buildFileContent(double maxWidth) {
     return GestureDetector(
-      onTap: () => _openFile(widget.mediaUrl),
+      onTap: _isDownloaded
+          ? () => OpenFile.open(_localFilePath!)
+          : (!_isDownloading ? _downloadFile : null),
       child: Container(
         width: maxWidth,
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.grey[900],
           borderRadius: BorderRadius.circular(15),
         ),
-        child: Row(
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Center(
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Icon(
-                    _getFileIcon(widget.mediaType),
-                    color: uiColor,
-                    size: 32,
-                  ),
-                  if (widget.isLoading)
-                    SizedBox(
-                      width: 40,
-                      height: 40,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          uiColor.withOpacity(0.7),
+            Row(
+              children: [
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Icon(
+                      _getFileIcon(widget.mediaType),
+                      color: uiColor,
+                      size: 34,
+                    ),
+                    if (widget.isLoading)
+                      SizedBox(
+                        width: 44,
+                        height: 44,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            uiColor.withOpacity(0.7),
+                          ),
                         ),
                       ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    widget.fileName ?? 'File',
-                    style: const TextStyle(
-                      color: whiteColor,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  if (widget.fileSize != null)
-                    Text(
-                      _formatFileSize(widget.fileSize!),
-                      style: const TextStyle(color: Colors.grey, fontSize: 11),
-                    ),
-                  if (widget.isLoading)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        'Sending...',
-                        style: TextStyle(color: uiColor, fontSize: 10),
+                  ],
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.fileName ?? 'File',
+                        style: const TextStyle(
+                          color: whiteColor,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                ],
-              ),
+                      const SizedBox(height: 3),
+                      Text(
+                        widget.isLoading
+                            ? 'Sending...'
+                            : _isDownloading
+                            ? 'Downloading ${(_downloadProgress * 100).toInt()}%'
+                            : widget.fileSize != null
+                            ? _formatFileSize(widget.fileSize!)
+                            : '',
+                        style: TextStyle(
+                          color: _isDownloading ? uiColor : Colors.grey,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (!widget.isLoading && !widget.isMe)
+                  _isDownloading
+                      ? SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: CircularProgressIndicator(
+                            value: _downloadProgress > 0
+                                ? _downloadProgress
+                                : null,
+                            strokeWidth: 2.5,
+                            color: uiColor,
+                          ),
+                        )
+                      : _isDownloaded
+                      ? const SizedBox.shrink()
+                      : Container(
+                          decoration: BoxDecoration(
+                            color: uiColor,
+                            shape: BoxShape.circle,
+                          ),
+                          padding: const EdgeInsets.all(6),
+                          child: const Icon(
+                            Icons.download,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+              ],
             ),
-            if (widget.isLoading) Icon(Icons.close, color: uiColor, size: 20),
+            if (_isDownloading && _downloadProgress > 0) ...[
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: _downloadProgress,
+                  backgroundColor: Colors.grey[800],
+                  valueColor: AlwaysStoppedAnimation<Color>(uiColor),
+                  minHeight: 3,
+                ),
+              ),
+            ],
           ],
         ),
       ),

@@ -137,9 +137,9 @@ class SettingScreen extends ConsumerWidget {
             onTap: () => _go(context, const StorageScreen()),
           ),
           _svgTile(
-            svgPath: "assets/svg/chat_icon.svg",
+            svgPath: "assets/svg/add1.svg",
             "Chats",
-            iconSize: 27,
+            iconSize: 32,
             onTap: () => _go(context, const ChatsScreen()),
           ),
           _svgTile(

@@ -572,7 +572,21 @@ class ChatRepository {
 
       await _createChatIfNotExists(chatId, senderId, receiverId);
 
-      final fileUrl = await _cloudinaryRepository.storeFileToCloudinary(file);
+      final isDocument = [
+        'pdf',
+        'doc',
+        'docx',
+        'xls',
+        'xlsx',
+        'ppt',
+        'pptx',
+        'txt',
+      ].contains(fileType.toLowerCase());
+
+      final fileUrl = await _cloudinaryRepository.storeFileToCloudinary(
+        file,
+        isDocument: isDocument,
+      );
 
       if (fileUrl == null) {
         throw Exception('Failed to upload file to Cloudinary');
@@ -649,8 +663,21 @@ class ChatRepository {
       debugPrint('📤 Starting file upload...');
 
       await _createChatIfNotExists(chatId, senderId, receiverId);
+      final isDocument = [
+        'pdf',
+        'doc',
+        'docx',
+        'xls',
+        'xlsx',
+        'ppt',
+        'pptx',
+        'txt',
+      ].contains(fileType.toLowerCase());
 
-      final fileUrl = await _cloudinaryRepository.storeFileToCloudinary(file);
+      final fileUrl = await _cloudinaryRepository.storeFileToCloudinary(
+        file,
+        isDocument: isDocument,
+      );
 
       if (fileUrl == null) {
         throw Exception('Failed to upload file to Cloudinary');

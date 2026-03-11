@@ -3,7 +3,9 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:whatsapp_clone/colors.dart';
+import 'package:whatsapp_clone/screens/chat/controller/chat_controller.dart';
 import 'package:whatsapp_clone/screens/chat/provider/chat_provider.dart';
+import 'package:whatsapp_clone/screens/chat/provider/uploading_messages_provider.dart';
 import 'package:whatsapp_clone/screens/chat/widget/camera_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -39,6 +41,20 @@ class AttachmentSheet extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<AttachmentSheet> createState() => _AttachmentSheetState();
+}
+
+class _UploadTask {
+  final String tempId;
+  final File file;
+  final String mediaType;
+  final int duration;
+
+  const _UploadTask({
+    required this.tempId,
+    required this.file,
+    required this.mediaType,
+    required this.duration,
+  });
 }
 
 class _AttachmentSheetState extends ConsumerState<AttachmentSheet>
@@ -147,109 +163,90 @@ class _AttachmentSheetState extends ConsumerState<AttachmentSheet>
 
   Future<void> _sendSelected() async {
     if (_selected.isEmpty || _isSending) return;
+    setState(() => _isSending = true);
 
+    final chatId = widget.chatId;
+    final receiverUid = widget.receiverUid;
+    final currentUid = widget.currentUid;
+    final chatController = ref.read(chatControllerProvider);
+    final uploadingNotifier = ref.read(uploadingMessagesProvider.notifier);
+
+    final List<_UploadTask> tasks = [];
+
+    for (int i = 0; i < _selected.length; i++) {
+      final asset = _selected[i];
+      final file = await asset.file;
+      if (file == null) continue;
+
+      final mediaType = asset.type == AssetType.image ? 'image' : 'video';
+      final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}_$i';
+
+      uploadingNotifier.add(
+        UploadingMessage(
+          tempId: tempId,
+          localFilePath: file.path,
+          mediaType: mediaType,
+          duration: asset.type == AssetType.video ? asset.duration : null,
+        ),
+      );
+
+      tasks.add(
+        _UploadTask(
+          tempId: tempId,
+          file: file,
+          mediaType: mediaType,
+          duration: asset.duration,
+        ),
+      );
+    }
+
+    if (mounted) Navigator.pop(context);
+
+    await Future.wait(
+      tasks.map(
+        (task) => _uploadTask(
+          task: task,
+          chatId: chatId,
+          receiverUid: receiverUid,
+          currentUid: currentUid,
+          chatController: chatController,
+          uploadingNotifier: uploadingNotifier,
+        ),
+      ),
+    );
+
+    if (mounted) setState(() => _isSending = false);
+  }
+
+  Future<void> _uploadTask({
+    required _UploadTask task,
+    required String chatId,
+    required String receiverUid,
+    required String currentUid,
+    required ChatController chatController,
+    required UploadingMessagesNotifier uploadingNotifier,
+  }) async {
     try {
-      setState(() => _isSending = true);
-
-      if (mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (_) => AlertDialog(
-            backgroundColor: backgroundColor,
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(color: uiColor),
-                const SizedBox(height: 16),
-                Text(
-                  'Uploading ${_selected.length} file${_selected.length > 1 ? 's' : ''}...',
-                  style: const TextStyle(color: whiteColor),
-                ),
-              ],
-            ),
-          ),
+      if (task.mediaType == 'image') {
+        await chatController.sendImage(
+          chatId: chatId,
+          senderId: currentUid,
+          imageFile: task.file,
+          receiverId: receiverUid,
         );
-      }
-
-      final chatController = ref.read(chatControllerProvider);
-
-      final files = <File>[];
-      final mediaTypes = <String>[];
-
-      for (final asset in _selected) {
-        try {
-          final file = await asset.file;
-          if (file != null) {
-            files.add(file);
-
-            if (asset.type == AssetType.image) {
-              mediaTypes.add('image');
-            } else if (asset.type == AssetType.video) {
-              mediaTypes.add('video');
-            }
-          }
-        } catch (e) {
-          debugPrint('Error getting file for asset: $e');
-        }
-      }
-      if (files.length == 1) {
-        if (mediaTypes.first == 'image') {
-          await chatController.sendImage(
-            chatId: widget.chatId,
-            senderId: widget.currentUid,
-            imageFile: files.first,
-            receiverId: widget.receiverUid,
-          );
-        } else {
-          final asset = _selected.first;
-          await chatController.sendVideo(
-            chatId: widget.chatId,
-            senderId: widget.currentUid,
-            videoFile: files.first,
-            receiverId: widget.receiverUid,
-            duration: asset.duration,
-          );
-        }
       } else {
-        await chatController.sendMultipleMedia(
-          chatId: widget.chatId,
-          senderId: widget.currentUid,
-          files: files,
-          receiverId: widget.receiverUid,
-          mediaTypes: mediaTypes,
-        );
-      }
-
-      if (mounted) {
-        Navigator.pop(context);
-        Navigator.pop(context);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '${_selected.length} file${_selected.length > 1 ? 's' : ''} sent!',
-            ),
-            backgroundColor: uiColor,
-          ),
+        await chatController.sendVideo(
+          chatId: chatId,
+          senderId: currentUid,
+          videoFile: task.file,
+          receiverId: receiverUid,
+          duration: task.duration,
         );
       }
     } catch (e) {
-      debugPrint('Error sending files: $e');
-      if (mounted) {
-        Navigator.pop(context);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to send files: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      debugPrint('Upload error (${task.tempId}): $e');
     } finally {
-      if (mounted) {
-        setState(() => _isSending = false);
-      }
+      uploadingNotifier.remove(task.tempId);
     }
   }
 

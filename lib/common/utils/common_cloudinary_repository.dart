@@ -15,10 +15,15 @@ class CommonCloudinaryRepository {
 
   CommonCloudinaryRepository();
 
-  Future<String?> storeFileToCloudinary(File file) async {
+  Future<String?> storeFileToCloudinary(
+    File file, {
+    bool isDocument = false,
+  }) async {
     try {
+      const resourceType = 'auto';
+
       final url = Uri.parse(
-        "https://api.cloudinary.com/v1_1/$cloudName/auto/upload",
+        "https://api.cloudinary.com/v1_1/$cloudName/$resourceType/upload",
       );
 
       var request = http.MultipartRequest('POST', url);
@@ -29,10 +34,11 @@ class CommonCloudinaryRepository {
       if (response.statusCode == 200) {
         final resData = await response.stream.bytesToString();
         final data = jsonDecode(resData);
-
+        print('✅ Uploaded: ${data['secure_url']}');
         return data['secure_url'];
       } else {
-        print('Cloudinary upload failed with status: ${response.statusCode}');
+        final body = await response.stream.bytesToString();
+        print('Cloudinary upload failed: ${response.statusCode} - $body');
         return null;
       }
     } catch (e) {
@@ -53,22 +59,19 @@ class CommonCloudinaryRepository {
       final uri = Uri.parse(fileUrl);
       final path = uri.path;
       final uploadIndex = path.indexOf('/upload/');
-      if (uploadIndex == -1) {
-        throw Exception('Invalid Cloudinary URL');
-      }
+      if (uploadIndex == -1) throw Exception('Invalid Cloudinary URL');
 
       final afterUpload = path.substring(uploadIndex + 8);
-
       final parts = afterUpload.split('/');
       final withoutVersion = parts
-          .where((part) => !part.startsWith('v'))
+          .where((p) => !RegExp(r'^v\d+$').hasMatch(p))
           .toList();
-
       final publicIdWithExt = withoutVersion.join('/');
-      final publicId = publicIdWithExt.substring(
-        0,
-        publicIdWithExt.lastIndexOf('.'),
-      );
+
+      final lastDot = publicIdWithExt.lastIndexOf('.');
+      final publicId = lastDot != -1
+          ? publicIdWithExt.substring(0, lastDot)
+          : publicIdWithExt;
 
       print('Extracted public_id: $publicId');
       return publicId;
@@ -81,15 +84,16 @@ class CommonCloudinaryRepository {
   Future<void> deleteFileFromCloudinary(String fileUrl) async {
     try {
       final publicId = _extractPublicId(fileUrl);
-
       final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       final signature = _generateSignature(publicId, timestamp);
 
-      final url = Uri.parse(
-        "https://api.cloudinary.com/v1_1/$cloudName/image/destroy",
-      );
+      String resourceType = 'image';
+      if (fileUrl.contains('/video/upload/')) resourceType = 'video';
+      if (fileUrl.contains('/raw/upload/')) resourceType = 'raw';
 
-      print('Attempting to delete with public_id: $publicId');
+      final url = Uri.parse(
+        "https://api.cloudinary.com/v1_1/$cloudName/$resourceType/destroy",
+      );
 
       final response = await http.post(
         url,
@@ -106,15 +110,12 @@ class CommonCloudinaryRepository {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['result'] == 'ok') {
-          print('✅ Successfully deleted from Cloudinary: $publicId');
+          print('✅ Deleted: $publicId');
         } else {
-          print('❌ Delete failed: ${data['result']}');
-          throw Exception('Failed to delete: ${data['result']}');
+          throw Exception('Delete failed: ${data['result']}');
         }
       } else {
-        throw Exception(
-          'Failed to delete file from Cloudinary: ${response.body}',
-        );
+        throw Exception('Delete HTTP error: ${response.body}');
       }
     } catch (e) {
       print('Cloudinary delete error: $e');
