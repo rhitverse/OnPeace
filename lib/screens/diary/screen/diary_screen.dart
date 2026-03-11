@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:whatsapp_clone/colors.dart';
+import 'package:whatsapp_clone/screens/diary/screen/calendar_screen.dart';
+import 'package:whatsapp_clone/screens/diary/screen/diary_tab_screen.dart';
+import 'package:whatsapp_clone/screens/diary/screen/entry_screen.dart';
 
 class DiaryScreen extends StatefulWidget {
   const DiaryScreen({super.key});
@@ -11,6 +14,12 @@ class DiaryScreen extends StatefulWidget {
 class _DiaryScreenState extends State<DiaryScreen> {
   int selectedTab = 0;
 
+  final List<Widget> _screens = const [
+    EntryScreen(),
+    CalenderScreen(),
+    DiaryTabScreen(),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -20,9 +29,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.blue),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          onPressed: () => Navigator.pop(context),
         ),
         title: Container(
           height: 39,
@@ -42,52 +49,15 @@ class _DiaryScreenState extends State<DiaryScreen> {
         centerTitle: true,
       ),
 
-      body: Column(
-        children: [
-          const SizedBox(height: 2),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(12),
-              children: const [
-                DiaryCard(
-                  month: "SEP",
-                  day: "13",
-                  text:
-                      "The little beautiful baby succulent! Can't take the eyes off them.",
-                ),
-                DiaryCard(
-                  month: "SEP",
-                  day: "13",
-                  text:
-                      "The best and most expensive iPhone you have ever created.",
-                ),
-                DiaryCard(
-                  month: "AUG",
-                  day: "10",
-                  text: "Today I started the 'Start a business today' course.",
-                ),
-                DiaryCard(
-                  month: "JUL",
-                  day: "30",
-                  text:
-                      "Whaaaaaaa?? John Snow! You can't do this to your aunt!",
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+      body: _screens[selectedTab],
     );
   }
 
   Widget _tabButton(String text, int index) {
     bool selected = selectedTab == index;
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          selectedTab = index;
-        });
-      },
+      onTap: () => setState(() => selectedTab = index),
+
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         alignment: Alignment.center,
@@ -100,66 +70,6 @@ class _DiaryScreenState extends State<DiaryScreen> {
             fontSize: 20,
           ),
         ),
-      ),
-    );
-  }
-}
-
-class DiaryCard extends StatelessWidget {
-  final String month;
-  final String day;
-  final String text;
-
-  const DiaryCard({
-    super.key,
-    required this.month,
-    required this.day,
-    required this.text,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          Column(
-            children: [
-              Text(
-                month,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.blue,
-                ),
-              ),
-              Text(
-                day,
-                style: const TextStyle(
-                  fontSize: 33,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.blue,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                fontSize: 15,
-                color: Colors.blue,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
