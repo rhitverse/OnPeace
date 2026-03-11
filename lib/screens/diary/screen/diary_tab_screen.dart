@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/screens/diary/screen/diary_data.dart';
+import 'package:whatsapp_clone/screens/diary/controller/diary_controller.dart';
 import 'package:whatsapp_clone/screens/diary/screen/entry_screen.dart';
 
 class DiaryTabScreen extends StatelessWidget {
@@ -8,26 +9,67 @@ class DiaryTabScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final controller = context.watch<DiaryController>();
     return Column(
       children: [
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: diaryEntries.length,
-            itemBuilder: (context, index) {
-              final e = diaryEntries[index];
-              return DiaryCard(
-                month: e["month"]!,
-                day: e["day"]!,
-                weekday: e["weekday"]!,
-                time: e["time"]!,
-                text: e["text"]!,
-              );
-            },
+          child: controller.isLoading
+              ? const Center(
+                  child: CircularProgressIndicator(color: whiteColor),
+                )
+              : controller.entries.isEmpty
+              ? const Center(
+                  child: Text(
+                    "entry not exists",
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: controller.entries.length,
+                  itemBuilder: (context, index) {
+                    final e = controller.entries[index];
+                    return DiaryCard(
+                      entry: e,
+                      onDelete: () => controller.deleteEntry(e.id),
+                      onEdit: () => _showEditDialog(context, controller, e),
+                    );
+                  },
+                ),
+        ),
+        _BottomBar(count: controller.entries.length),
+      ],
+    );
+  }
+
+  void _showEditDialog(BuildContext context, DiaryController ctrl, e) {
+    final textController = TextEditingController(text: e.text);
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Edit Entry", style: TextStyle(color: Colors.blue)),
+        content: TextField(
+          controller: textController,
+          maxLines: 4,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
           ),
         ),
-        _BottomBar(count: diaryEntries.length),
-      ],
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await ctrl.updateEntry(e.id, textController.text);
+              Navigator.pop(context);
+            },
+            child: const Text("Update", style: TextStyle(color: whiteColor)),
+          ),
+        ],
+      ),
     );
   }
 }

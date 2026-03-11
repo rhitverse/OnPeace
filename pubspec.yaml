@@ -65,6 +65,8 @@ dependencies:
   syncfusion_flutter_pdfviewer: ^32.2.9
   dio: ^5.9.2
   open_file: ^3.5.11
+  get: ^4.7.3
+  provider: ^6.1.5+1
 
 dev_dependencies:
   flutter_test:
