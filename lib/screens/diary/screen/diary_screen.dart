@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:whatsapp_clone/screens/diary/controller/diary_controller.dart';
-import 'package:whatsapp_clone/screens/diary/screen/calendar_screen.dart';
+import 'package:whatsapp_clone/screens/diary/calendar/calendar_screen.dart';
 import 'package:whatsapp_clone/screens/diary/screen/entry_screen.dart';
 import 'package:whatsapp_clone/screens/diary/screen/diary_tab_screen.dart';
 
@@ -13,61 +13,169 @@ class DiaryScreen extends StatefulWidget {
 }
 
 class _DiaryScreenState extends State<DiaryScreen> {
-  int selectedTab = 0;
+  static const _skyBlue = Color(0xFF5BB5C8);
+  static const _tabLabels = ['Entries', 'Calendar', 'Diary'];
+
+  final _pageController = PageController();
+  int _selectedTab = 0;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _goToTab(int index) {
+    setState(() => _selectedTab = index);
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => DiaryController()..listenToEntries(),
       child: Scaffold(
-        backgroundColor: Colors.blue.shade800,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios, color: Colors.blue),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: Container(
-            height: 39,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: Colors.blue, width: 1.8),
+        backgroundColor: Colors.white,
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(96),
+          child: Container(
+            color: Colors.white,
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: const Padding(
+                            padding: EdgeInsets.all(4),
+                            child: Icon(
+                              Icons.arrow_back_ios,
+                              color: _skyBlue,
+                              size: 18,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: _TabBar(
+                            labels: _tabLabels,
+                            selectedIndex: _selectedTab,
+                            activeColor: _skyBlue,
+                            onTap: _goToTab,
+                          ),
+                        ),
+                        const SizedBox(width: 26),
+                      ],
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 6),
+                    child: Text(
+                      'DIARY',
+                      style: TextStyle(
+                        fontSize: 19,
+                        letterSpacing: 3,
+                        fontWeight: FontWeight.w500,
+                        color: _skyBlue,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _tabButton("Entry", 0),
-                _tabButton("Calendar", 1),
-                _tabButton("Diary", 2),
-              ],
-            ),
           ),
-          centerTitle: true,
         ),
-        body: IndexedStack(
-          index: selectedTab,
-          children: const [EntryScreen(), CalenderScreen(), DiaryTabScreen()],
+        body: Container(
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage("assets/sky_background.jpeg"),
+              fit: BoxFit.cover,
+            ),
+          ),
+          child: Consumer<DiaryController>(
+            builder: (_, controller, __) {
+              return PageView(
+                controller: _pageController,
+                onPageChanged: (i) => setState(() => _selectedTab = i),
+                children: [
+                  const EntryScreen(),
+                  CalendarScreen(
+                    diaryDates: controller.entries
+                        .map((e) => e.createdAt)
+                        .toList(),
+                  ),
+                  const DiaryTabScreen(),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
   }
+}
 
-  Widget _tabButton(String text, int index) {
-    bool selected = selectedTab == index;
-    return GestureDetector(
-      onTap: () => setState(() => selectedTab = index),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(color: selected ? Colors.blue : Colors.white),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: selected ? Colors.white : Colors.blue,
-            fontWeight: FontWeight.w500,
-            fontSize: 20,
-          ),
+class _TabBar extends StatelessWidget {
+  final List<String> labels;
+  final int selectedIndex;
+  final Color activeColor;
+  final void Function(int) onTap;
+
+  const _TabBar({
+    required this.labels,
+    required this.selectedIndex,
+    required this.activeColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 39,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: activeColor.withOpacity(0.45), width: 1),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Row(
+          children: List.generate(labels.length, (i) {
+            final selected = selectedIndex == i;
+            final isFirst = i == 0;
+            final isLast = i == labels.length - 1;
+            return Expanded(
+              child: GestureDetector(
+                onTap: () => onTap(i),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: selected ? activeColor : Colors.white,
+                    borderRadius: BorderRadius.horizontal(
+                      left: isFirst ? const Radius.circular(8) : Radius.zero,
+                      right: isLast ? const Radius.circular(8) : Radius.zero,
+                    ),
+                  ),
+                  child: Text(
+                    labels[i],
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: selected ? Colors.white : activeColor,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
         ),
       ),
     );

@@ -12,7 +12,7 @@ class DiaryRepository {
 
   Future<void> addEntry(String text) async {
     final now = DateTime.now();
-    final monthNames = [
+    const monthNames = [
       '',
       'JAN',
       'FEB',
@@ -27,8 +27,7 @@ class DiaryRepository {
       'NOV',
       'DEC',
     ];
-
-    final weekdays = [
+    const weekdays = [
       '',
       'Monday',
       'Tuesday',
@@ -45,6 +44,7 @@ class DiaryRepository {
       'weekday': weekdays[now.weekday],
       'time':
           '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
+      'createdAt': Timestamp.fromDate(now),
     });
   }
 

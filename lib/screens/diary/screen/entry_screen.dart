@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:whatsapp_clone/colors.dart';
 import 'package:whatsapp_clone/models/diary_model.dart';
 import 'package:whatsapp_clone/screens/diary/controller/diary_controller.dart';
-import 'diary_data.dart';
 
 class EntryScreen extends StatefulWidget {
   const EntryScreen({super.key});
@@ -49,43 +48,7 @@ class _EntryScreenState extends State<EntryScreen> {
                   },
                 ),
         ),
-        _BottomBar(
-          count: diaryEntries.length,
-          onAdd: () => _showAddDialog(context, controller),
-        ),
       ],
-    );
-  }
-
-  void _showAddDialog(BuildContext context, DiaryController controller) {
-    final textController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("New Entry", style: TextStyle(color: Colors.blue)),
-        content: TextField(
-          controller: textController,
-          maxLines: 4,
-          decoration: InputDecoration(
-            hintText: "What happend today...",
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-            onPressed: () async {
-              await controller.addEntry(textController.text);
-              Navigator.pop(context);
-            },
-            child: const Text("Save", style: TextStyle(color: whiteColor)),
-          ),
-        ],
-      ),
     );
   }
 
@@ -176,11 +139,11 @@ class DiaryCard extends StatelessWidget {
       child: GestureDetector(
         onLongPress: onEdit,
         child: Container(
-          margin: const EdgeInsets.only(bottom: 10),
+          margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: whiteColor,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(14),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -217,9 +180,6 @@ class DiaryCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
-              Container(width: 1, height: 60, color: Colors.blue.shade100),
-              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -256,38 +216,6 @@ class DiaryCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _BottomBar extends StatelessWidget {
-  final int count;
-  final VoidCallback onAdd;
-  const _BottomBar({required this.count, required this.onAdd});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 54,
-      color: Colors.blue,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          GestureDetector(
-            onTap: onAdd,
-            child: const Icon(Icons.edit, color: whiteColor, size: 24),
-          ),
-          Text(
-            "$count diary",
-            style: const TextStyle(
-              color: whiteColor,
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
       ),
     );
   }
