@@ -97,63 +97,50 @@ class _CalendarScreenState extends State<CalendarScreen>
             children: [
               Expanded(
                 flex: 67,
-                // ✅ Calendar area pe koi bhi swipe (horizontal + vertical) block
-                // Screen tabhi change hogi jab niche sky wale area pe swipe karo
-                child: RawGestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  gestures: {
-                    HorizontalDragGestureRecognizer:
-                        GestureRecognizerFactoryWithHandlers<
-                          HorizontalDragGestureRecognizer
-                        >(
-                          () => HorizontalDragGestureRecognizer(),
-                          (instance) {},
-                        ),
-                    VerticalDragGestureRecognizer:
-                        GestureRecognizerFactoryWithHandlers<
-                          VerticalDragGestureRecognizer
-                        >(() => VerticalDragGestureRecognizer(), (instance) {}),
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 10),
-                    decoration: BoxDecoration(
-                      color: whiteColor,
-                      borderRadius: BorderRadius.circular(1),
-                      boxShadow: [
-                        BoxShadow(
-                          color: backgroundColor.withOpacity(0.15),
-                          blurRadius: 18,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(18),
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 350),
-                        switchInCurve: Curves.easeOut,
-                        switchOutCurve: Curves.easeIn,
-                        transitionBuilder: (child, animation) =>
-                            FadeTransition(opacity: animation, child: child),
-                        child: _currentMode == _modeDay
-                            ? PageFlipCalendar(
-                                key: const ValueKey('day'),
-                                initialDate: _selectedDate,
-                                onDateChanged: _handleDateSelected,
-                              )
-                            : MonthCalendarView(
-                                key: const ValueKey('month'),
-                                selectedDate: _selectedDate,
-                                diaryDates: widget.diaryDates,
-                                onDateSelected: _handleDateSelected,
-                              ),
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: whiteColor,
+                    borderRadius: BorderRadius.circular(1),
+                    boxShadow: [
+                      BoxShadow(
+                        color: backgroundColor.withOpacity(0.15),
+                        blurRadius: 18,
+                        offset: const Offset(0, 6),
                       ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 350),
+                      switchInCurve: Curves.easeOut,
+                      switchOutCurve: Curves.easeIn,
+                      transitionBuilder: (child, animation) =>
+                          FadeTransition(opacity: animation, child: child),
+                      child: _currentMode == _modeDay
+                          ? PageFlipCalendar(
+                              key: const ValueKey('day'),
+                              initialDate: _selectedDate,
+                              onDateChanged: _handleDateSelected,
+                            )
+                          : MonthCalendarView(
+                              key: const ValueKey('month'),
+                              selectedDate: _selectedDate,
+                              diaryDates: widget.diaryDates,
+                              onDateSelected: _handleDateSelected,
+                            ),
                     ),
                   ),
                 ),
               ),
-              // ✅ Yahan swipe karoge toh PageView switch hoga (Entries / Calendar / Diary)
-              const Expanded(flex: 28, child: SizedBox.shrink()),
+              Expanded(
+                flex: 28,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  child: const SizedBox.expand(),
+                ),
+              ),
             ],
           ),
 

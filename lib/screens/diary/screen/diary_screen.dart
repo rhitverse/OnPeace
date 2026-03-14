@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:whatsapp_clone/colors.dart';
 import 'package:whatsapp_clone/screens/diary/controller/diary_controller.dart';
 import 'package:whatsapp_clone/screens/diary/calendar/calendar_screen.dart';
 import 'package:whatsapp_clone/screens/diary/screen/entry_screen.dart';
@@ -39,27 +40,27 @@ class _DiaryScreenState extends State<DiaryScreen> {
     return ChangeNotifierProvider(
       create: (_) => DiaryController()..listenToEntries(),
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: whiteColor,
         appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(96),
+          preferredSize: const Size.fromHeight(72),
           child: Container(
-            color: Colors.white,
+            color: whiteColor,
             child: SafeArea(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                    padding: const EdgeInsets.fromLTRB(12, 4, 12, 2),
                     child: Row(
                       children: [
                         GestureDetector(
                           onTap: () => Navigator.pop(context),
                           child: const Padding(
-                            padding: EdgeInsets.all(4),
+                            padding: EdgeInsets.all(2),
                             child: Icon(
                               Icons.arrow_back_ios,
                               color: _skyBlue,
-                              size: 18,
+                              size: 24,
                             ),
                           ),
                         ),
@@ -72,16 +73,16 @@ class _DiaryScreenState extends State<DiaryScreen> {
                             onTap: _goToTab,
                           ),
                         ),
-                        const SizedBox(width: 26),
+                        const SizedBox(width: 24),
                       ],
                     ),
                   ),
                   const Padding(
-                    padding: EdgeInsets.only(bottom: 6),
+                    padding: EdgeInsets.only(bottom: 3),
                     child: Text(
                       'DIARY',
                       style: TextStyle(
-                        fontSize: 19,
+                        fontSize: 17,
                         letterSpacing: 3,
                         fontWeight: FontWeight.w500,
                         color: _skyBlue,
@@ -93,6 +94,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
             ),
           ),
         ),
+
         body: Container(
           decoration: const BoxDecoration(
             image: DecorationImage(

@@ -1,7 +1,41 @@
 import 'dart:math';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:ui' as ui;
+
+class _PageFlipRecognizer extends OneSequenceGestureRecognizer {
+  void Function(PointerDownEvent)? onDown;
+  void Function(PointerMoveEvent)? onMove;
+  void Function(PointerUpEvent)? onUp;
+  void Function(PointerCancelEvent)? onCancel;
+
+  @override
+  void addAllowedPointer(PointerDownEvent event) {
+    startTrackingPointer(event.pointer, event.transform);
+    resolve(GestureDisposition.accepted);
+    onDown?.call(event);
+  }
+
+  @override
+  void handleEvent(PointerEvent event) {
+    if (event is PointerMoveEvent) {
+      onMove?.call(event);
+    } else if (event is PointerUpEvent) {
+      onUp?.call(event);
+      stopTrackingPointer(event.pointer);
+    } else if (event is PointerCancelEvent) {
+      onCancel?.call(event);
+      stopTrackingPointer(event.pointer);
+    }
+  }
+
+  @override
+  void didStopTrackingLastPointer(int pointer) {}
+
+  @override
+  String get debugDescription => 'pageFlip';
+}
 
 class PageFlipCalendar extends StatefulWidget {
   final DateTime initialDate;
@@ -49,18 +83,18 @@ class _PageFlipCalendarState extends State<PageFlipCalendar>
       duration: const Duration(milliseconds: 600),
     );
     _animController.addListener(() {
-      setState(() {
-        _touchPoint = _animTouchPoint.value;
-      });
+      setState(() => _touchPoint = _animTouchPoint.value);
     });
     _animController.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
-        setState(() {
-          _currentDate = _nextDate;
-          _isDragging = false;
-          _touchPoint = Offset(0.01, 0.01);
-        });
-        widget.onDateChanged(_currentDate);
+        // ✅ Sirf tab update karo jab animation naturally complete ho
+        if (!_isDragging) {
+          setState(() {
+            _currentDate = _nextDate;
+            _touchPoint = const Offset(0.01, 0.01);
+          });
+          widget.onDateChanged(_currentDate);
+        }
       }
     });
   }
@@ -71,89 +105,109 @@ class _PageFlipCalendarState extends State<PageFlipCalendar>
     super.dispose();
   }
 
-  void _calcCornerXY(Offset pos) {
-    _cornerX = pos.dx <= _size.width / 2 ? 0 : _size.width;
-    _cornerY = pos.dy <= _size.height / 2 ? 0 : _size.height;
-    _isRTandLB =
-        (_cornerX == 0 && _cornerY == _size.height) ||
-        (_cornerX == _size.width && _cornerY == 0);
-  }
-
   bool _canDragOver() {
-    final dist = (_touchPoint - Offset(_cornerX, _cornerY)).distance;
-    return dist > _minSize;
+    return (_touchPoint - Offset(_cornerX, _cornerY)).distance > _minSize;
   }
 
   bool _isDragOverMinSize(double newX) {
-    if (_dragToRight) {
-      return (newX - _initialTouchX) > _minSize;
-    } else {
-      return (_initialTouchX - newX) > _minSize;
-    }
+    return _dragToRight
+        ? (newX - _initialTouchX) > _minSize
+        : (_initialTouchX - newX) > _minSize;
   }
 
-  void _startAnimation() {
-    double dx, dy;
-    if (_cornerX > 0) {
-      dx = -(_size.width + _touchPoint.dx);
-    } else {
-      dx = _size.width - _touchPoint.dx + _size.width;
-    }
-    if (_cornerY > 0) {
-      dy = _size.height - _touchPoint.dy;
-    } else {
-      dy = 1 - _touchPoint.dy;
-    }
+  void _startFlipAnimation() {
+    final dx = _cornerX > 0
+        ? -(_size.width + _touchPoint.dx)
+        : _size.width - _touchPoint.dx + _size.width;
+    final dy = _cornerY > 0
+        ? _size.height - _touchPoint.dy
+        : 1 - _touchPoint.dy;
 
-    final endPoint = Offset(_touchPoint.dx + dx, _touchPoint.dy + dy);
-
-    _animTouchPoint = Tween<Offset>(begin: _touchPoint, end: endPoint).animate(
-      CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
-    );
-
+    _animTouchPoint =
+        Tween<Offset>(
+          begin: _touchPoint,
+          end: Offset(_touchPoint.dx + dx, _touchPoint.dy + dy),
+        ).animate(
+          CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
+        );
     _animController.forward(from: 0);
   }
 
-  void _onPanStart(DragStartDetails d) {
+  void _onPointerDown(PointerDownEvent e) {
+    if (_animController.isAnimating) {
+      _animController.stop();
+      _currentDate = _nextDate;
+      widget.onDateChanged(_currentDate);
+    } else {
+      _animController.stop();
+    }
+
+    _isCalendarUpdated = false;
+    _isDragging = false;
+
+    // ✅ Charon corners — top-left, top-right, bottom-left, bottom-right
     final corners = [
       Offset(0, 0),
       Offset(_size.width, 0),
       Offset(0, _size.height),
       Offset(_size.width, _size.height),
     ];
-    final nearCorner = corners.any(
-      (c) => (d.localPosition - c).distance < _minSize * 1.5,
+    final nearest = corners.reduce(
+      (a, b) => (a - e.localPosition).distance < (b - e.localPosition).distance
+          ? a
+          : b,
     );
-    if (!nearCorner) return;
 
-    _animController.stop();
-    _isCalendarUpdated = false;
-    _isDragging = true;
-    _calcCornerXY(d.localPosition);
+    _cornerX = nearest.dx;
+    _cornerY = nearest.dy;
+    _isRTandLB =
+        (_cornerX == 0 && _cornerY == _size.height) ||
+        (_cornerX == _size.width && _cornerY == 0);
     _dragToRight = _cornerX == 0;
-    _touchPoint = d.localPosition;
-    _initialTouchX = d.localPosition.dx;
+    _nextDate = _currentDate;
+    _touchPoint = nearest;
+    _initialTouchX = nearest.dx;
+
     setState(() {});
   }
 
-  void _onPanUpdate(DragUpdateDetails d) {
-    if (_isDragOverMinSize(d.localPosition.dx) && !_isCalendarUpdated) {
+  void _onPointerMove(PointerMoveEvent e) {
+    final x = e.localPosition.dx.clamp(10.0, _size.width - 10);
+    final y = e.localPosition.dy.clamp(10.0, _size.height - 10);
+    final movedDist = (e.localPosition - Offset(_cornerX, _cornerY)).distance;
+
+    if (!_isDragging && movedDist > 12) {
+      _isDragging = true;
+    }
+
+    if (!_isDragging) return;
+
+    if (_isDragOverMinSize(e.localPosition.dx) && !_isCalendarUpdated) {
       _nextDate = _dragToRight
           ? _currentDate.subtract(const Duration(days: 1))
           : _currentDate.add(const Duration(days: 1));
       _isCalendarUpdated = true;
     }
-    setState(() {
-      double x = d.localPosition.dx.clamp(10, _size.width - 10);
-      double y = d.localPosition.dy.clamp(10, _size.height - 10);
+    final corner = Offset(_cornerX, _cornerY);
+    Offset newPoint = Offset(x, y);
 
-      _touchPoint = Offset(x, y);
+    double maxDist = _size.width * 0.8;
+
+    final dist = (newPoint - corner).distance;
+
+    if (dist > maxDist) {
+      final dir = (newPoint - corner) / dist;
+      newPoint = corner + dir * maxDist;
+    }
+
+    setState(() {
+      _touchPoint = newPoint;
     });
   }
 
-  void _onPanEnd(DragEndDetails d) {
+  void _onPointerUp(PointerUpEvent e) {
     if (_canDragOver() && _isCalendarUpdated) {
-      _startAnimation();
+      _startFlipAnimation();
     } else {
       setState(() {
         _isDragging = false;
@@ -162,16 +216,33 @@ class _PageFlipCalendarState extends State<PageFlipCalendar>
     }
   }
 
+  void _onPointerCancel(PointerCancelEvent e) {
+    setState(() {
+      _isDragging = false;
+      _touchPoint = const Offset(0.01, 0.01);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        _size = Size(constraints.maxWidth, constraints.maxHeight * 0.4);
+        _size = Size(constraints.maxWidth, constraints.maxHeight);
 
-        return GestureDetector(
-          onPanStart: _onPanStart,
-          onPanUpdate: _onPanUpdate,
-          onPanEnd: _onPanEnd,
+        return RawGestureDetector(
+          behavior: HitTestBehavior.opaque,
+          gestures: {
+            _PageFlipRecognizer:
+                GestureRecognizerFactoryWithHandlers<_PageFlipRecognizer>(
+                  () => _PageFlipRecognizer(),
+                  (instance) {
+                    instance.onDown = _onPointerDown;
+                    instance.onMove = _onPointerMove;
+                    instance.onUp = _onPointerUp;
+                    instance.onCancel = _onPointerCancel;
+                  },
+                ),
+          },
           child: SizedBox(
             width: constraints.maxWidth,
             height: constraints.maxHeight,
@@ -239,45 +310,40 @@ class _PageFlipPainter extends CustomPainter {
     _bezierControl2 = Offset(bc2x, bc2y);
 
     double bs1x = bc1x - (cornerX - bc1x) / 2;
-    double bs1y = cornerY;
+    final double bs1y = cornerY;
 
     Offset touch = touchPoint;
 
-    if (touch.dx > 0 && touch.dx < size.width) {
-      if (bs1x < 0 || bs1x > size.width) {
-        if (bs1x < 0) bs1x = size.width - bs1x;
+    if (touch.dx > 0 &&
+        touch.dx < size.width &&
+        (bs1x < 0 || bs1x > size.width)) {
+      if (bs1x < 0) bs1x = size.width - bs1x;
 
-        double f1 = (cornerX - touch.dx).abs();
-        double f2 = size.width * f1 / bs1x;
-        double newTouchX = (cornerX - f2).abs();
+      final f1 = (cornerX - touch.dx).abs();
+      final f2 = size.width * f1 / bs1x;
+      final newTouchX = (cornerX - f2).abs();
+      final f3 = (cornerX - newTouchX).abs() * (cornerY - touch.dy).abs() / f1;
+      touch = Offset(newTouchX, (cornerY - f3).abs());
 
-        double f3 =
-            (cornerX - newTouchX).abs() * (cornerY - touch.dy).abs() / f1;
-        double newTouchY = (cornerY - f3).abs();
-        touch = Offset(newTouchX, newTouchY);
+      middleX = (touch.dx + cornerX) / 2;
+      middleY = (touch.dy + cornerY) / 2;
 
-        middleX = (touch.dx + cornerX) / 2;
-        middleY = (touch.dy + cornerY) / 2;
+      bc1x =
+          middleX -
+          (cornerY - middleY) * (cornerY - middleY) / (cornerX - middleX);
+      bc1y = cornerY;
+      bc2x = cornerX;
+      bc2y =
+          middleY -
+          (cornerX - middleX) * (cornerX - middleX) / (cornerY - middleY);
 
-        bc1x =
-            middleX -
-            (cornerY - middleY) * (cornerY - middleY) / (cornerX - middleX);
-        bc1y = cornerY;
-        bc2x = cornerX;
-        bc2y =
-            middleY -
-            (cornerX - middleX) * (cornerX - middleX) / (cornerY - middleY);
-
-        _bezierControl1 = Offset(bc1x, bc1y);
-        _bezierControl2 = Offset(bc2x, bc2y);
-
-        bs1x = bc1x - (cornerX - bc1x) / 2;
-      }
+      _bezierControl1 = Offset(bc1x, bc1y);
+      _bezierControl2 = Offset(bc2x, bc2y);
+      bs1x = bc1x - (cornerX - bc1x) / 2;
     }
 
     _bezierStart1 = Offset(bs1x, bs1y);
     _bezierStart2 = Offset(cornerX, bc2y - (cornerY - bc2y) / 2);
-
     _touchToCornerDist = (touch - Offset(cornerX, cornerY)).distance;
 
     _bezierEnd1 = _getCross(
@@ -304,14 +370,15 @@ class _PageFlipPainter extends CustomPainter {
   }
 
   Offset _getCross(Offset p1, Offset p2, Offset p3, Offset p4) {
-    double a1 = (p2.dy - p1.dy) / (p2.dx - p1.dx);
-    double b1 = (p1.dx * p2.dy - p2.dx * p1.dy) / (p1.dx - p2.dx);
-    double a2 = (p4.dy - p3.dy) / (p4.dx - p3.dx);
-    double b2 = (p3.dx * p4.dy - p4.dx * p3.dy) / (p3.dx - p4.dx);
-    double x = (b2 - b1) / (a1 - a2);
-    double y = a1 * x + b1;
-    return Offset(x, y);
+    final a1 = (p2.dy - p1.dy) / (p2.dx - p1.dx);
+    final b1 = (p1.dx * p2.dy - p2.dx * p1.dy) / (p1.dx - p2.dx);
+    final a2 = (p4.dy - p3.dy) / (p4.dx - p3.dx);
+    final b2 = (p3.dx * p4.dy - p4.dx * p3.dy) / (p3.dx - p4.dx);
+    final x = (b2 - b1) / (a1 - a2);
+    return Offset(x, a1 * x + b1);
   }
+
+  bool _isValidOffset(Offset o) => !o.dx.isNaN && !o.dy.isNaN;
 
   @override
   void paint(Canvas canvas, Size canvasSize) {
@@ -319,7 +386,6 @@ class _PageFlipPainter extends CustomPainter {
       Rect.fromLTWH(0, 0, canvasSize.width, canvasSize.height),
       Paint()..color = Colors.white,
     );
-
     _drawDatePage(canvas, currentDate, canvasSize);
 
     if (!isDragging) return;
@@ -327,6 +393,13 @@ class _PageFlipPainter extends CustomPainter {
     try {
       _calcPoints();
     } catch (_) {
+      return;
+    }
+
+    if (!_isValidOffset(_bezierStart1) ||
+        !_isValidOffset(_bezierStart2) ||
+        !_isValidOffset(_bezierControl1) ||
+        !_isValidOffset(_bezierControl2)) {
       return;
     }
 
@@ -358,12 +431,14 @@ class _PageFlipPainter extends CustomPainter {
     canvas.restore();
 
     canvas.save();
-    final diffPath = Path.combine(
-      PathOperation.difference,
-      Path()..addRect(Rect.fromLTWH(0, 0, canvasSize.width, canvasSize.height)),
-      path0,
+    canvas.clipPath(
+      Path.combine(
+        PathOperation.difference,
+        Path()
+          ..addRect(Rect.fromLTWH(0, 0, canvasSize.width, canvasSize.height)),
+        path0,
+      ),
     );
-    canvas.clipPath(diffPath);
     _drawDatePage(canvas, currentDate, canvasSize);
     canvas.restore();
 
@@ -375,31 +450,29 @@ class _PageFlipPainter extends CustomPainter {
       ..lineTo(cornerX, cornerY)
       ..close();
 
-    final nextPageRegion = Path.combine(PathOperation.intersect, path0, path1);
     canvas.save();
-    canvas.clipPath(nextPageRegion);
+    canvas.clipPath(Path.combine(PathOperation.intersect, path0, path1));
     _drawDatePage(canvas, nextDate, canvasSize);
     _drawBackShadow(canvas);
     canvas.restore();
 
     _drawCurrentBackArea(canvas, canvasSize, path0, path1);
-
     _drawCurrentPageShadow(canvas, path0);
     _drawPageEdge(canvas);
   }
 
   void _drawDatePage(Canvas canvas, DateTime date, Size canvasSize) {
-    // size ki jagah canvasSize use karo
-    final rect = Rect.fromLTWH(0, 0, canvasSize.width, canvasSize.height);
-    canvas.drawRect(rect, Paint()..color = Colors.white);
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, canvasSize.width, canvasSize.height),
+      Paint()..color = Colors.white,
+    );
 
-    final centerX = canvasSize.width / 2;
-    final centerY = canvasSize.height / 2;
+    final cx = canvasSize.width / 2;
+    final cy = canvasSize.height / 2;
 
-    final dayStr = DateFormat('d').format(date);
-    final datePaint = TextPainter(
+    final dayPainter = TextPainter(
       text: TextSpan(
-        text: dayStr,
+        text: DateFormat('d').format(date),
         style: TextStyle(
           fontSize: canvasSize.width * 0.28,
           fontWeight: FontWeight.bold,
@@ -408,15 +481,14 @@ class _PageFlipPainter extends CustomPainter {
       ),
       textDirection: ui.TextDirection.ltr,
     )..layout();
-    datePaint.paint(
+    dayPainter.paint(
       canvas,
-      Offset(centerX - datePaint.width / 2, centerY - datePaint.height / 2),
+      Offset(cx - dayPainter.width / 2, cy - dayPainter.height / 2),
     );
 
-    final monthStr = DateFormat('MMMM yyyy').format(date);
-    final monthPaint = TextPainter(
+    final monthPainter = TextPainter(
       text: TextSpan(
-        text: monthStr,
+        text: DateFormat('MMMM yyyy').format(date),
         style: TextStyle(
           fontSize: canvasSize.width * 0.055,
           color: themeColor,
@@ -425,18 +497,17 @@ class _PageFlipPainter extends CustomPainter {
       ),
       textDirection: ui.TextDirection.ltr,
     )..layout();
-    monthPaint.paint(
+    monthPainter.paint(
       canvas,
       Offset(
-        centerX - monthPaint.width / 2,
-        centerY - datePaint.height / 2 - monthPaint.height - 8,
+        cx - monthPainter.width / 2,
+        cy - dayPainter.height / 2 - monthPainter.height - 8,
       ),
     );
 
-    final dayNameStr = DateFormat('EEEE').format(date).toUpperCase();
-    final dayNamePaint = TextPainter(
+    final dayNamePainter = TextPainter(
       text: TextSpan(
-        text: dayNameStr,
+        text: DateFormat('EEEE').format(date).toUpperCase(),
         style: TextStyle(
           fontSize: canvasSize.width * 0.04,
           color: themeColor.withOpacity(0.7),
@@ -445,69 +516,50 @@ class _PageFlipPainter extends CustomPainter {
       ),
       textDirection: ui.TextDirection.ltr,
     )..layout();
-    dayNamePaint.paint(
+    dayNamePainter.paint(
       canvas,
-      Offset(
-        centerX - dayNamePaint.width / 2,
-        centerY + datePaint.height / 2 + 12,
-      ),
+      Offset(cx - dayNamePainter.width / 2, cy + dayPainter.height / 2 + 12),
     );
   }
 
   void _drawPageEdge(Canvas canvas) {
-    final edgePaint = Paint()
-      ..shader = LinearGradient(
-        colors: [Colors.white, Colors.grey.shade300, Colors.grey.shade500],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-
-    final edgePath = Path()
-      ..moveTo(_bezierStart1.dx, _bezierStart1.dy)
-      ..lineTo(_bezierVertex1.dx, _bezierVertex1.dy)
-      ..lineTo(_bezierVertex2.dx, _bezierVertex2.dy)
-      ..lineTo(_bezierStart2.dx, _bezierStart2.dy);
-
-    canvas.drawPath(edgePath, edgePaint);
+    canvas.drawPath(
+      Path()
+        ..moveTo(_bezierStart1.dx, _bezierStart1.dy)
+        ..lineTo(_bezierVertex1.dx, _bezierVertex1.dy)
+        ..lineTo(_bezierVertex2.dx, _bezierVertex2.dy)
+        ..lineTo(_bezierStart2.dx, _bezierStart2.dy),
+      Paint()
+        ..shader = LinearGradient(
+          colors: [Colors.white, Colors.grey.shade300, Colors.grey.shade500],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ).createShader(Rect.fromLTWH(0, 0, size.width, size.height)),
+    );
   }
 
   void _drawBackShadow(Canvas canvas) {
-    final shadowPaint = Paint()
-      ..shader =
-          LinearGradient(
-            colors: [
-              Colors.black.withOpacity(0.4),
-              Colors.black.withOpacity(0.05),
-            ],
-            begin: isRTandLB ? Alignment.centerLeft : Alignment.centerRight,
-            end: isRTandLB ? Alignment.centerRight : Alignment.centerLeft,
-          ).createShader(
-            Rect.fromLTWH(
-              _bezierStart1.dx - _touchToCornerDist / 4,
-              _bezierStart1.dy,
-              _touchToCornerDist / 4,
-              size.height,
-            ),
-          );
-
+    final rect = Rect.fromLTWH(
+      isRTandLB ? _bezierStart1.dx : _bezierStart1.dx - _touchToCornerDist / 4,
+      _bezierStart1.dy,
+      _touchToCornerDist / 4,
+      size.height,
+    );
     canvas.drawRect(
-      Rect.fromLTWH(
-        isRTandLB
-            ? _bezierStart1.dx
-            : _bezierStart1.dx - _touchToCornerDist / 4,
-        _bezierStart1.dy,
-        _touchToCornerDist / 4,
-        size.height,
-      ),
-      shadowPaint,
+      rect,
+      Paint()
+        ..shader = LinearGradient(
+          colors: [
+            Colors.black.withOpacity(0.4),
+            Colors.black.withOpacity(0.05),
+          ],
+          begin: isRTandLB ? Alignment.centerLeft : Alignment.centerRight,
+          end: isRTandLB ? Alignment.centerRight : Alignment.centerLeft,
+        ).createShader(rect),
     );
   }
 
   void _drawCurrentPageShadow(Canvas canvas, Path path0) {
-    final shadowPaint = Paint()
-      ..color = Colors.black.withOpacity(0.15)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
-
     canvas.save();
     canvas.clipPath(
       Path.combine(
@@ -516,25 +568,27 @@ class _PageFlipPainter extends CustomPainter {
         path0,
       ),
     );
-
-    final edgePath = Path()
-      ..moveTo(_bezierStart1.dx, _bezierStart1.dy)
-      ..quadraticBezierTo(
-        _bezierControl1.dx,
-        _bezierControl1.dy,
-        _bezierEnd1.dx,
-        _bezierEnd1.dy,
-      )
-      ..lineTo(touchPoint.dx, touchPoint.dy)
-      ..lineTo(_bezierEnd2.dx, _bezierEnd2.dy)
-      ..quadraticBezierTo(
-        _bezierControl2.dx,
-        _bezierControl2.dy,
-        _bezierStart2.dx,
-        _bezierStart2.dy,
-      );
-
-    canvas.drawPath(edgePath, shadowPaint);
+    canvas.drawPath(
+      Path()
+        ..moveTo(_bezierStart1.dx, _bezierStart1.dy)
+        ..quadraticBezierTo(
+          _bezierControl1.dx,
+          _bezierControl1.dy,
+          _bezierEnd1.dx,
+          _bezierEnd1.dy,
+        )
+        ..lineTo(touchPoint.dx, touchPoint.dy)
+        ..lineTo(_bezierEnd2.dx, _bezierEnd2.dy)
+        ..quadraticBezierTo(
+          _bezierControl2.dx,
+          _bezierControl2.dy,
+          _bezierStart2.dx,
+          _bezierStart2.dy,
+        ),
+      Paint()
+        ..color = Colors.black.withOpacity(0.15)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+    );
     canvas.restore();
   }
 
@@ -544,15 +598,17 @@ class _PageFlipPainter extends CustomPainter {
     Path path0,
     Path path1,
   ) {
-    final backPath = Path()
-      ..moveTo(_bezierVertex2.dx, _bezierVertex2.dy)
-      ..lineTo(_bezierVertex1.dx, _bezierVertex1.dy)
-      ..lineTo(_bezierEnd1.dx, _bezierEnd1.dy)
-      ..lineTo(touchPoint.dx, touchPoint.dy)
-      ..lineTo(_bezierEnd2.dx, _bezierEnd2.dy)
-      ..close();
-
-    final backRegion = Path.combine(PathOperation.intersect, path0, backPath);
+    final backRegion = Path.combine(
+      PathOperation.intersect,
+      path0,
+      Path()
+        ..moveTo(_bezierVertex2.dx, _bezierVertex2.dy)
+        ..lineTo(_bezierVertex1.dx, _bezierVertex1.dy)
+        ..lineTo(_bezierEnd1.dx, _bezierEnd1.dy)
+        ..lineTo(touchPoint.dx, touchPoint.dy)
+        ..lineTo(_bezierEnd2.dx, _bezierEnd2.dy)
+        ..close(),
+    );
 
     canvas.save();
     canvas.clipPath(backRegion);
@@ -561,96 +617,73 @@ class _PageFlipPainter extends CustomPainter {
       pow(cornerX - _bezierControl1.dx, 2) +
           pow(_bezierControl2.dy - cornerY, 2),
     );
+
+    if (dis == 0 || dis.isNaN || dis.isInfinite) {
+      canvas.restore();
+      return;
+    }
+
     final f8 = (cornerX - _bezierControl1.dx) / dis;
     final f9 = (_bezierControl2.dy - cornerY) / dis;
 
-    final matrix = Matrix4.identity()
-      ..translate(_bezierControl1.dx, _bezierControl1.dy)
-      ..storage[0] = 1 - 2 * f9 * f9
-      ..storage[1] = 2 * f8 * f9
-      ..storage[4] = 2 * f8 * f9
-      ..storage[5] = 1 - 2 * f8 * f8
-      ..translate(-_bezierControl1.dx, -_bezierControl1.dy);
+    canvas.transform(
+      (Matrix4.identity()
+            ..translate(_bezierControl1.dx, _bezierControl1.dy)
+            ..storage[0] = 1 - 2 * f9 * f9
+            ..storage[1] = 2 * f8 * f9
+            ..storage[4] = 2 * f8 * f9
+            ..storage[5] = 1 - 2 * f8 * f8
+            ..translate(-_bezierControl1.dx, -_bezierControl1.dy))
+          .storage,
+    );
 
-    final backPaint = Paint()
-      ..colorFilter = ColorFilter.matrix([
-        0.55,
-        0,
-        0,
-        0,
-        80,
-        0,
-        0.55,
-        0,
-        0,
-        80,
-        0,
-        0,
-        0.55,
-        0,
-        80,
-        0,
-        0,
-        0,
-        0.2,
-        0,
-      ]);
-
-    canvas.transform(matrix.storage);
     canvas.drawRect(
       Rect.fromLTWH(0, 0, canvasSize.width, canvasSize.height),
       Paint()..color = Colors.white,
     );
-    _drawDatePageFaded(canvas, currentDate, canvasSize, backPaint);
+    _drawDatePageFaded(canvas, currentDate);
     canvas.restore();
 
-    final f1 =
-        ((_bezierStart1.dx + _bezierControl1.dx) / 2 - _bezierControl1.dx)
-            .abs();
-    final f2 =
-        ((_bezierStart2.dy + _bezierControl2.dy) / 2 - _bezierControl2.dy)
-            .abs();
-    final f3 = min(f1, f2);
+    final f3 = min(
+      ((_bezierStart1.dx + _bezierControl1.dx) / 2 - _bezierControl1.dx).abs(),
+      ((_bezierStart2.dy + _bezierControl2.dy) / 2 - _bezierControl2.dy).abs(),
+    );
+    final left = isRTandLB ? _bezierStart1.dx - 1 : _bezierStart1.dx - f3 - 1;
+    final right = isRTandLB ? _bezierStart1.dx + f3 + 1 : _bezierStart1.dx + 1;
+    final rectWidth = right - left;
+
+    if (rectWidth <= 0 || rectWidth.isNaN || _bezierStart1.dy.isNaN) return;
 
     canvas.save();
     canvas.clipPath(backRegion);
-
-    final left = isRTandLB ? _bezierStart1.dx - 1 : _bezierStart1.dx - f3 - 1;
-    final right = isRTandLB ? _bezierStart1.dx + f3 + 1 : _bezierStart1.dx + 1;
-
-    final foldShadow = Paint()
-      ..shader =
-          LinearGradient(
-            colors: [
-              Colors.black.withOpacity(0.05),
-              Colors.black.withOpacity(0.35),
-            ],
-            begin: isRTandLB ? Alignment.centerRight : Alignment.centerLeft,
-            end: isRTandLB ? Alignment.centerLeft : Alignment.centerRight,
-          ).createShader(
-            Rect.fromLTWH(left, _bezierStart1.dy, right - left, size.height),
-          );
-
+    final shadowRect = Rect.fromLTWH(
+      left,
+      _bezierStart1.dy,
+      rectWidth,
+      size.height,
+    );
     canvas.drawRect(
-      Rect.fromLTWH(left, _bezierStart1.dy, right - left, size.height),
-      foldShadow,
+      shadowRect,
+      Paint()
+        ..shader = LinearGradient(
+          colors: [
+            Colors.black.withOpacity(0.05),
+            Colors.black.withOpacity(0.35),
+          ],
+          begin: isRTandLB ? Alignment.centerRight : Alignment.centerLeft,
+          end: isRTandLB ? Alignment.centerLeft : Alignment.centerRight,
+        ).createShader(shadowRect),
     );
     canvas.restore();
   }
 
-  void _drawDatePageFaded(
-    Canvas canvas,
-    DateTime date,
-    Size canvasSize,
-    Paint basePaint,
-  ) {
-    final centerX = size.width / 2;
-    final centerY = size.height / 2;
+  void _drawDatePageFaded(Canvas canvas, DateTime date) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
 
-    final dayStr = DateFormat('d').format(date);
-    final datePaint = TextPainter(
+    final p = TextPainter(
       text: TextSpan(
-        text: dayStr,
+        text: DateFormat('d').format(date),
         style: TextStyle(
           fontSize: size.width * 0.28,
           fontWeight: FontWeight.bold,
@@ -659,17 +692,13 @@ class _PageFlipPainter extends CustomPainter {
       ),
       textDirection: ui.TextDirection.ltr,
     )..layout();
-    datePaint.paint(
-      canvas,
-      Offset(centerX - datePaint.width / 2, centerY - datePaint.height / 2),
-    );
+    p.paint(canvas, Offset(cx - p.width / 2, cy - p.height / 2));
   }
 
   @override
-  bool shouldRepaint(_PageFlipPainter oldDelegate) {
-    return oldDelegate.touchPoint != touchPoint ||
-        oldDelegate.currentDate != currentDate ||
-        oldDelegate.nextDate != nextDate ||
-        oldDelegate.isDragging != isDragging;
-  }
+  bool shouldRepaint(_PageFlipPainter old) =>
+      old.touchPoint != touchPoint ||
+      old.currentDate != currentDate ||
+      old.nextDate != nextDate ||
+      old.isDragging != isDragging;
 }
