@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:whatsapp_clone/colors.dart';
 
 class MonthCalendarView extends StatefulWidget {
   final DateTime selectedDate;
@@ -49,8 +50,8 @@ class _MonthCalendarViewState extends State<MonthCalendarView> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final primaryColor = theme.primaryColor;
+    Theme.of(context);
+    final primaryColor = calendarLightTheme1;
     final darkColor = HSLColor.fromColor(primaryColor)
         .withLightness(
           (HSLColor.fromColor(primaryColor).lightness - 0.15).clamp(0.0, 1.0),

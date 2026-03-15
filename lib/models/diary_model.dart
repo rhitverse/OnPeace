@@ -8,6 +8,8 @@ class DiaryModel {
   final String weekday;
   final String time;
   final DateTime createdAt;
+  final int weatherIndex;
+  final int moodIndex;
 
   DiaryModel({
     required this.id,
@@ -17,6 +19,8 @@ class DiaryModel {
     required this.weekday,
     required this.time,
     required this.createdAt,
+    this.weatherIndex = 0,
+    this.moodIndex = 0,
   });
 
   factory DiaryModel.fromMap(String id, Map<String, dynamic> map) {
@@ -28,6 +32,8 @@ class DiaryModel {
       weekday: map['weekday'] ?? '',
       time: map['time'] ?? '',
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      weatherIndex: map['weatherIndex'] ?? 0,
+      moodIndex: map['moodIndex'] ?? 0,
     );
   }
 
@@ -66,6 +72,8 @@ class DiaryModel {
       'time':
           '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
       'createdAt': Timestamp.fromDate(now),
+      'weatherIndex': weatherIndex,
+      'moodIndex': moodIndex,
     };
   }
 }

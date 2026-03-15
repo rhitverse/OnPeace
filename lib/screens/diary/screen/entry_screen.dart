@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:provider/provider.dart';
 import 'package:whatsapp_clone/colors.dart';
 import 'package:whatsapp_clone/models/diary_model.dart';
@@ -99,6 +100,20 @@ class DiaryCard extends StatelessWidget {
     required this.onEdit,
   });
 
+  static const _weatherIcons = [
+    'assets/svg/sunny.svg',
+    'assets/svg/cloud.svg',
+    'assets/svg/wind.svg',
+    'assets/svg/rain.svg',
+    'assets/svg/snow.svg',
+    'assets/svg/fog.svg',
+  ];
+  static const _moodIcons = [
+    'assets/svg/smile.svg',
+    'assets/svg/unsmile.svg',
+    'assets/svg/bad.svg',
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Dismissible(
@@ -139,11 +154,11 @@ class DiaryCard extends StatelessWidget {
       child: GestureDetector(
         onLongPress: onEdit,
         child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(12),
+          margin: const EdgeInsets.only(bottom: 7),
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: whiteColor,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(7),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -155,10 +170,9 @@ class DiaryCard extends StatelessWidget {
                   children: [
                     Text(
                       entry.month,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.blue,
+                        color: calendarLightTheme1.withOpacity(0.9),
                       ),
                     ),
                     Text(
@@ -166,7 +180,7 @@ class DiaryCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 36,
                         fontWeight: FontWeight.w500,
-                        color: Colors.blue,
+                        color: calendarLightTheme1,
                         height: 1.1,
                       ),
                     ),
@@ -174,7 +188,7 @@ class DiaryCard extends StatelessWidget {
                       entry.weekday,
                       style: TextStyle(
                         fontSize: 11,
-                        color: Colors.blue.shade300,
+                        color: calendarLightTheme1.withOpacity(0.9),
                       ),
                     ),
                   ],
@@ -191,22 +205,46 @@ class DiaryCard extends StatelessWidget {
                           entry.time,
                           style: TextStyle(
                             fontSize: 11,
-                            color: Colors.blue.shade300,
+                            color: calendarLightTheme1,
                           ),
                         ),
-                        const Icon(
-                          Icons.cloud_done_outlined,
-                          color: Colors.blue,
-                          size: 16,
+                        Row(
+                          children: [
+                            SvgPicture.asset(
+                              _weatherIcons[entry.weatherIndex.clamp(
+                                0,
+                                _weatherIcons.length - 1,
+                              )],
+                              width: 16,
+                              height: 16,
+                              colorFilter: ColorFilter.mode(
+                                calendarLightTheme1.withOpacity(0.7),
+                                BlendMode.srcIn,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            SvgPicture.asset(
+                              _moodIcons[entry.moodIndex.clamp(
+                                0,
+                                _moodIcons.length - 1,
+                              )],
+                              width: 16,
+                              height: 16,
+                              colorFilter: ColorFilter.mode(
+                                calendarLightTheme1.withOpacity(0.7),
+                                BlendMode.srcIn,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                     const SizedBox(height: 4),
                     Text(
                       entry.text,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
-                        color: Colors.blue,
+                        color: calendarLightTheme1,
                         fontWeight: FontWeight.w500,
                       ),
                     ),

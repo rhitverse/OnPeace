@@ -14,7 +14,7 @@ class DiaryScreen extends StatefulWidget {
 }
 
 class _DiaryScreenState extends State<DiaryScreen> {
-  static const _skyBlue = Color(0xFF5BB5C8);
+  static const _skyBlue = calendarLightTheme1;
   static const _tabLabels = ['Entries', 'Calendar', 'Diary'];
 
   final _pageController = PageController();
@@ -40,6 +40,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
     return ChangeNotifierProvider(
       create: (_) => DiaryController()..listenToEntries(),
       child: Scaffold(
+        resizeToAvoidBottomInset: false,
         backgroundColor: whiteColor,
         appBar: PreferredSize(
           preferredSize: const Size.fromHeight(72),
@@ -103,7 +104,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
             ),
           ),
           child: Consumer<DiaryController>(
-            builder: (_, controller, __) {
+            builder: (_, controller, _) {
               return PageView(
                 controller: _pageController,
                 onPageChanged: (i) => setState(() => _selectedTab = i),

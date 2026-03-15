@@ -6,7 +6,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:whatsapp_clone/screens/Notifications/controller/notification_controller.dart';
-import 'package:whatsapp_clone/screens/mobile_chat_screen.dart';
 
 class NotificaionScreen extends ConsumerWidget {
   const NotificaionScreen({super.key});
@@ -397,29 +396,7 @@ class _GeneralNotifTileState extends ConsumerState<_GeneralNotifTile> {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: widget.chatId.isNotEmpty
-          ? () async {
-              final receiverDoc = await FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(widget.fromUid)
-                  .get();
-              final receiverData = receiverDoc.data() ?? {};
-              if (context.mounted) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => MobileChatScreen(
-                      chatId: widget.chatId,
-                      receiverUid: widget.fromUid,
-                      receiverDisplayName:
-                          receiverData['displayname'] ?? _displayName,
-                      receiverProfilePic: receiverData['profilePic'] ?? '',
-                    ),
-                  ),
-                );
-              }
-            }
-          : null,
+      onTap: null,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         child: Row(

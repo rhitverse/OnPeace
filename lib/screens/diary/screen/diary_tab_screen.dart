@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:provider/provider.dart';
+import 'package:whatsapp_clone/colors.dart';
 import 'package:whatsapp_clone/screens/diary/controller/diary_controller.dart';
 
 class DiaryTabScreen extends StatefulWidget {
@@ -10,24 +12,23 @@ class DiaryTabScreen extends StatefulWidget {
 }
 
 class _DiaryTabScreenState extends State<DiaryTabScreen> {
-  static const _skyBlue = Color(0xFF7EC8E3);
-  static const _headerBlue = Color(0xFF82C8DE);
-
   final _titleController = TextEditingController();
   final _bodyController = TextEditingController();
 
   int _weatherIndex = 0;
   int _moodIndex = 0;
   static const _weatherIcons = [
-    Icons.wb_sunny_outlined,
-    Icons.cloud_outlined,
-    Icons.umbrella_outlined,
-    Icons.ac_unit_outlined,
+    'assets/svg/sunny.svg',
+    'assets/svg/cloud.svg',
+    'assets/svg/wind.svg',
+    'assets/svg/rain.svg',
+    'assets/svg/snow.svg',
+    'assets/svg/fog.svg',
   ];
   static const _moodIcons = [
-    Icons.sentiment_satisfied_alt_outlined,
-    Icons.sentiment_neutral_outlined,
-    Icons.sentiment_dissatisfied_outlined,
+    'assets/svg/smile.svg',
+    'assets/svg/unsmile.svg',
+    'assets/svg/bad.svg',
   ];
 
   @override
@@ -83,10 +84,16 @@ class _DiaryTabScreenState extends State<DiaryTabScreen> {
                 setState(() => _weatherIndex = i);
                 Navigator.pop(context);
               },
-              child: Icon(
+              child: SvgPicture.asset(
                 _weatherIcons[i],
-                size: 36,
-                color: _weatherIndex == i ? _skyBlue : Colors.grey.shade400,
+                width: 36,
+                height: 36,
+                colorFilter: ColorFilter.mode(
+                  _weatherIndex == i
+                      ? calendarLightTheme1
+                      : Colors.grey.shade400,
+                  BlendMode.srcIn,
+                ),
               ),
             );
           }),
@@ -112,10 +119,14 @@ class _DiaryTabScreenState extends State<DiaryTabScreen> {
                 setState(() => _moodIndex = i);
                 Navigator.pop(context);
               },
-              child: Icon(
+              child: SvgPicture.asset(
                 _moodIcons[i],
-                size: 36,
-                color: _moodIndex == i ? _skyBlue : Colors.grey.shade400,
+                width: 36,
+                height: 36,
+                colorFilter: ColorFilter.mode(
+                  _moodIndex == i ? calendarLightTheme1 : Colors.grey.shade400,
+                  BlendMode.srcIn,
+                ),
               ),
             );
           }),
@@ -132,7 +143,11 @@ class _DiaryTabScreenState extends State<DiaryTabScreen> {
       if (body.isNotEmpty) body,
     ].join('\n');
     if (combined.isEmpty) return;
-    await controller.addEntry(combined);
+    await controller.addEntry(
+      combined,
+      weatherIndex: _weatherIndex,
+      moodIndex: _moodIndex,
+    );
     _titleController.clear();
     _bodyController.clear();
     setState(() {});
@@ -142,12 +157,11 @@ class _DiaryTabScreenState extends State<DiaryTabScreen> {
   Widget build(BuildContext context) {
     final now = DateTime.now();
     final controller = context.read<DiaryController>();
-
     return Column(
       children: [
         Container(
           width: double.infinity,
-          color: _headerBlue.withOpacity(0.85),
+          color: Colors.transparent,
           padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -176,21 +190,6 @@ class _DiaryTabScreenState extends State<DiaryTabScreen> {
                 '${_dayName(now.weekday)} · ${_padded(now.hour)}:${_padded(now.minute)}',
                 style: const TextStyle(color: Colors.white70, fontSize: 13),
               ),
-              const SizedBox(height: 2),
-              Row(
-                children: const [
-                  Icon(
-                    Icons.location_on_outlined,
-                    color: Colors.white60,
-                    size: 13,
-                  ),
-                  SizedBox(width: 3),
-                  Text(
-                    'No Location',
-                    style: TextStyle(color: Colors.white60, fontSize: 12),
-                  ),
-                ],
-              ),
             ],
           ),
         ),
@@ -214,38 +213,59 @@ class _DiaryTabScreenState extends State<DiaryTabScreen> {
                             fontSize: 15,
                             color: Colors.black87,
                           ),
+                          cursorColor: Colors.grey,
                           decoration: InputDecoration(
                             hintText: 'Diary title',
                             hintStyle: TextStyle(
                               color: Colors.grey.shade400,
                               fontSize: 15,
                             ),
-                            border: InputBorder.none,
+
+                            enabledBorder: UnderlineInputBorder(
+                              borderSide: BorderSide(
+                                color: calendarLightTheme1.withOpacity(0.5),
+                                width: 1.5,
+                              ),
+                            ),
+                            focusedBorder: UnderlineInputBorder(
+                              borderSide: BorderSide(
+                                color: calendarLightTheme1,
+                                width: 1.5,
+                              ),
+                            ),
                           ),
                         ),
                       ),
                       GestureDetector(
                         onTap: _pickWeather,
-                        child: Icon(
+                        child: SvgPicture.asset(
                           _weatherIcons[_weatherIndex],
-                          color: _skyBlue,
-                          size: 24,
+                          color: calendarLightTheme1,
+                          width: 32,
+                          height: 32,
+                          colorFilter: const ColorFilter.mode(
+                            calendarLightTheme1,
+                            BlendMode.srcIn,
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 12),
+
+                      const SizedBox(width: 30),
                       GestureDetector(
                         onTap: _pickMood,
-                        child: Icon(
+                        child: SvgPicture.asset(
                           _moodIcons[_moodIndex],
-                          color: _skyBlue,
-                          size: 24,
+                          width: 32,
+                          height: 32,
+                          colorFilter: const ColorFilter.mode(
+                            calendarLightTheme1,
+                            BlendMode.srcIn,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-
-                Divider(height: 1, color: Colors.grey.shade200),
 
                 Expanded(
                   child: Padding(
@@ -281,7 +301,7 @@ class _DiaryTabScreenState extends State<DiaryTabScreen> {
 
         Container(
           height: 56,
-          color: _skyBlue,
+          color: calendarLightTheme1,
           padding: const EdgeInsets.symmetric(horizontal: 32),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

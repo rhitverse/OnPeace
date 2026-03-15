@@ -22,17 +22,25 @@ class DiaryController extends ChangeNotifier {
         notifyListeners();
       },
       onError: (e) {
-        errorMessage = "Data load nahi hua: $e";
+        errorMessage = "Data load failed: $e";
         isLoading = false;
         notifyListeners();
       },
     );
   }
 
-  Future<void> addEntry(String text) async {
+  Future<void> addEntry(
+    String text, {
+    int weatherIndex = 0,
+    int moodIndex = 0,
+  }) async {
     if (text.trim().isEmpty) return;
     try {
-      await _repo.addEntry(text.trim());
+      await _repo.addEntry(
+        text.trim(),
+        weatherIndex: weatherIndex,
+        moodIndex: moodIndex,
+      );
     } catch (e) {
       errorMessage = "Entry doesn't save: $e";
       notifyListeners();

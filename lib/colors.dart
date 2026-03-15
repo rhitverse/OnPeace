@@ -20,3 +20,6 @@ const uiColor = Color(0xFF00C357);
 const container = Color(0xff1c1e24);
 const attacment = Color(0xff14171E);
 const userSearchContainerColor = Color(0xff141318);
+
+const calendarLightTheme1 = Color(0xff0585d4);
+const calendarLightTheme2 = Color(0xffec6290);

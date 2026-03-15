@@ -10,41 +10,48 @@ class DiaryRepository {
   CollectionReference get _diaryRef =>
       _firestore.collection('users').doc(_uid).collection('diary');
 
-  Future<void> addEntry(String text) async {
+  static const _monthNames = [
+    '',
+    'JAN',
+    'FEB',
+    'MAR',
+    'APR',
+    'MAY',
+    'JUN',
+    'JUL',
+    'AUG',
+    'SEP',
+    'OCT',
+    'NOV',
+    'DEC',
+  ];
+  static const _weekdays = [
+    '',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ];
+
+  Future<void> addEntry(
+    String text, {
+    int weatherIndex = 0,
+    int moodIndex = 0,
+  }) async {
     final now = DateTime.now();
-    const monthNames = [
-      '',
-      'JAN',
-      'FEB',
-      'MAR',
-      'APR',
-      'MAY',
-      'JUN',
-      'JUL',
-      'AUG',
-      'SEP',
-      'OCT',
-      'NOV',
-      'DEC',
-    ];
-    const weekdays = [
-      '',
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-      'Sunday',
-    ];
     await _diaryRef.add({
       'text': text,
       'day': now.day.toString(),
-      'month': monthNames[now.month],
-      'weekday': weekdays[now.weekday],
+      'month': _monthNames[now.month],
+      'weekday': _weekdays[now.weekday],
       'time':
           '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
       'createdAt': Timestamp.fromDate(now),
+      'weatherIndex': weatherIndex,
+      'moodIndex': moodIndex,
     });
   }
 

@@ -1,4 +1,3 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:whatsapp_clone/colors.dart';
 import 'package:whatsapp_clone/screens/diary/calendar/month_calendar_view.dart';
@@ -196,7 +195,7 @@ class _AnimatedToggleFab extends StatelessWidget {
         ),
         child: AnimatedBuilder(
           animation: rotation,
-          builder: (_, __) => Transform.rotate(
+          builder: (_, _) => Transform.rotate(
             angle: rotation.value * 3.14159,
             child: Icon(
               isMonthMode
