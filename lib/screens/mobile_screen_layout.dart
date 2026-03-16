@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:whatsapp_clone/colors.dart';
+import 'package:whatsapp_clone/core/providers/unread_count_provider.dart';
 import 'package:whatsapp_clone/screens/Notifications/notification_screen.dart';
 import 'package:whatsapp_clone/screens/chat/Screens/chats_control.dart';
 import 'package:whatsapp_clone/screens/diary/screen/diary_screen.dart';
@@ -262,12 +263,22 @@ class _MobileScreenLayoutState extends ConsumerState<MobileScreenLayout> {
           : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
 
-      bottomNavigationBar: CustomBottomNavBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
+      bottomNavigationBar: Builder(
+        builder: (context) {
+          final chatCount = ref.watch(unreadChatsCountProvider).value ?? 0;
+          final notifCount =
+              ref.watch(unreadNotificationsCountProvider).value ?? 0;
+
+          return CustomBottomNavBar(
+            currentIndex: _currentIndex,
+            onTap: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            chatCount: chatCount,
+            notificationCount: notifCount,
+          );
         },
       ),
     );
