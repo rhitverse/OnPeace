@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:whatsapp_clone/colors.dart';
 import 'package:whatsapp_clone/common/utils/time_utils.dart';
 import 'package:whatsapp_clone/models/chat_contact.dart';
 import 'package:whatsapp_clone/screens/mobile_chat_screen.dart';
@@ -61,7 +62,7 @@ class ContactsListScreen extends StatelessWidget {
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w500,
-                                  color: Colors.white,
+                                  color: whiteColor,
                                   letterSpacing: 0.1,
                                 ),
                                 maxLines: 1,
@@ -74,22 +75,53 @@ class ContactsListScreen extends StatelessWidget {
                               getRelativeTime(chat.lastMessageTime),
                               style: TextStyle(
                                 fontSize: 13,
-                                color: Colors.grey[500],
-                                fontWeight: FontWeight.w400,
+                                color: chat.unreadCount > 0
+                                    ? whiteColor
+                                    : Colors.grey[500],
+                                fontWeight: chat.unreadCount > 0
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          chat.lastMessage,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[400],
-                            fontWeight: FontWeight.w400,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                chat.lastMessage,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: chat.unreadCount > 0
+                                      ? whiteColor
+                                      : Colors.grey[400],
+                                  fontWeight: chat.unreadCount > 0
+                                      ? FontWeight.w600
+                                      : FontWeight.w400,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (chat.unreadCount > 0)
+                              Container(
+                                margin: const EdgeInsets.only(left: 6),
+                                padding: const EdgeInsets.all(6),
+                                decoration: const BoxDecoration(
+                                  color: uiColor,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Text(
+                                  chat.unreadCount.toString(),
+                                  style: const TextStyle(
+                                    color: backgroundColor,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ],
                     ),

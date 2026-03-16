@@ -7,6 +7,7 @@ import 'package:whatsapp_clone/colors.dart';
 import 'package:whatsapp_clone/screens/chat/provider/chat_provider.dart';
 import 'package:whatsapp_clone/screens/chat/widget/bottom_chat_field.dart';
 import 'package:whatsapp_clone/screens/chat/widget/chat_loader.dart';
+import 'package:whatsapp_clone/screens/chat/widget/date_chip.dart';
 import 'package:whatsapp_clone/screens/chat/widget/receiver_message.dart';
 import 'package:whatsapp_clone/screens/chat/widget/sender_message.dart';
 import 'package:whatsapp_clone/screens/chat/provider/uploading_messages_provider.dart';
@@ -91,6 +92,17 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
           context,
         ).showSnackBar(const SnackBar(content: Text('Failed to send message')));
       }
+    }
+  }
+
+  bool _isDifferentDay(String? t1, String? t2) {
+    if (t1 == null || t2 == null) return false;
+    try {
+      final d1 = DateTime.parse(t1);
+      final d2 = DateTime.parse(t2);
+      return d1.year != d2.year || d1.month != d2.month || d1.day != d2.day;
+    } catch (_) {
+      return false;
     }
   }
 
@@ -202,17 +214,27 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                     final isLoading = uploadingMessages.contains(messageId);
 
                     String timeString = '';
+                    DateTime? msgDateTime;
                     try {
                       if (timeStr is String) {
-                        timeString = DateFormat(
-                          'h:mm a',
-                        ).format(DateTime.parse(timeStr));
+                        msgDateTime = DateTime.parse(timeStr);
+                        timeString = DateFormat('h:mm a').format(msgDateTime);
                       }
                     } catch (_) {}
 
                     bool showTail = true;
                     bool isGrouped = false;
                     bool showTime = true;
+
+                    bool showDataChip = false;
+                    if (index == messages.length - 1) {
+                      showDataChip = true;
+                    } else {
+                      showDataChip = _isDifferentDay(
+                        timeStr,
+                        messages[index + 1]['time'],
+                      );
+                    }
 
                     if (index > 0) {
                       final prev = messages[index - 1];
@@ -230,39 +252,46 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                           ).format(DateTime.parse(prevTimeStr));
                         }
                       } catch (_) {}
+
                       if (prev['senderId'] == senderId &&
                           prevTimeString == timeString) {
                         showTime = false;
                       }
                     }
 
-                    return isMe
-                        ? SenderMessage(
-                            text: text,
-                            time: timeString,
-                            showTail: showTail,
-                            isGrouped: isGrouped,
-                            showTime: showTime,
-                            mediaUrl: mediaUrl,
-                            mediaType: mediaType,
-                            fileName: fileName,
-                            fileSize: fileSize,
-                            duration: duration,
-                            isLoading: isLoading,
-                          )
-                        : ReceiverMessage(
-                            text: text,
-                            time: timeString,
-                            showTail: showTail,
-                            isGrouped: isGrouped,
-                            showTime: showTime,
-                            mediaUrl: mediaUrl,
-                            mediaType: mediaType,
-                            fileName: fileName,
-                            fileSize: fileSize,
-                            duration: duration,
-                            isLoading: isLoading,
-                          );
+                    return Column(
+                      children: [
+                        if (showDataChip && msgDateTime != null)
+                          DateChip(dateTime: msgDateTime),
+                        isMe
+                            ? SenderMessage(
+                                text: text,
+                                time: timeString,
+                                showTail: showTail,
+                                isGrouped: isGrouped,
+                                showTime: showTime,
+                                mediaUrl: mediaUrl,
+                                mediaType: mediaType,
+                                fileName: fileName,
+                                fileSize: fileSize,
+                                duration: duration,
+                                isLoading: isLoading,
+                              )
+                            : ReceiverMessage(
+                                text: text,
+                                time: timeString,
+                                showTail: showTail,
+                                isGrouped: isGrouped,
+                                showTime: showTime,
+                                mediaUrl: mediaUrl,
+                                mediaType: mediaType,
+                                fileName: fileName,
+                                fileSize: fileSize,
+                                duration: duration,
+                                isLoading: isLoading,
+                              ),
+                      ],
+                    );
                   },
                 );
               },
