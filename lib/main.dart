@@ -2,13 +2,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:whatsapp_clone/colors.dart';
+import 'package:whatsapp_clone/common/utils/navigator_key.dart';
 import 'package:whatsapp_clone/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:whatsapp_clone/features/app/splash/splash_screen.dart';
 import 'package:whatsapp_clone/screens/calls/controller/call_provider.dart';
 import 'package:whatsapp_clone/screens/calls/screen/incoming_call_screen.dart';
-
-final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() {
   runZonedGuarded(

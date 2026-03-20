@@ -3,10 +3,10 @@ import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:whatsapp_clone/common/utils/navigator_key.dart';
 import 'package:whatsapp_clone/models/call_state.dart';
 import 'package:whatsapp_clone/screens/calls/repository/call_repository.dart';
 import 'package:whatsapp_clone/screens/calls/screen/calls_screen.dart';
-import 'package:whatsapp_clone/main.dart';
 
 class CallController extends StateNotifier<CallState> {
   final CallRepository _repo;
@@ -67,7 +67,7 @@ class CallController extends StateNotifier<CallState> {
 
     navigatorKey.currentState?.push(
       MaterialPageRoute(
-        settings: const RouteSettings(name: 'call-screen'), // ✅ naam do
+        settings: const RouteSettings(name: 'call-screen'),
         builder: (_) => const CallScreen(),
       ),
     );

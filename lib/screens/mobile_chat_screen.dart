@@ -9,6 +9,8 @@ import 'package:whatsapp_clone/screens/chat/provider/chat_provider.dart';
 import 'package:whatsapp_clone/screens/chat/widget/bottom_chat_field.dart';
 import 'package:whatsapp_clone/screens/chat/widget/chat_loader.dart';
 import 'package:whatsapp_clone/screens/chat/widget/date_chip.dart';
+import 'package:whatsapp_clone/screens/chat/widget/profile/view_profile_screen.dart';
+import 'package:whatsapp_clone/screens/chat/widget/profile/view_profile_unknown.dart';
 import 'package:whatsapp_clone/screens/chat/widget/receiver_message.dart';
 import 'package:whatsapp_clone/screens/chat/widget/sender_message.dart';
 import 'package:whatsapp_clone/screens/chat/provider/uploading_messages_provider.dart';
@@ -107,6 +109,19 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
     }
   }
 
+  void _openProfile() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ViewProfileUnknown(
+          receiverUid: widget.receiverUid,
+          receiverDisplayName: receiverDisplayName,
+          receiverProfilePic: receiverProfilePic,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
@@ -126,26 +141,32 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
           onPressed: () => Navigator.pop(context),
           icon: const Icon(Icons.arrow_back_ios),
         ),
-        title: Row(
-          children: [
-            CircleAvatar(
-              radius: 26,
-              backgroundImage: receiverProfilePic.isNotEmpty
-                  ? NetworkImage(receiverProfilePic)
-                  : null,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                receiverDisplayName,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: whiteColor,
+        title: GestureDetector(
+          onTap: _openProfile,
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: _openProfile,
+                child: CircleAvatar(
+                  radius: 26,
+                  backgroundImage: receiverProfilePic.isNotEmpty
+                      ? NetworkImage(receiverProfilePic)
+                      : null,
                 ),
               ),
-            ),
-          ],
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  receiverDisplayName,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: whiteColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
           GestureDetector(

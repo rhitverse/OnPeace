@@ -884,7 +884,6 @@ class _AudioPlayerBubbleState extends State<AudioPlayerBubble> {
     try {
       await _player.setUrl(widget.mediaUrl);
     } catch (e) {
-      debugPrint('Duration fetch error: $e');
     } finally {
       _isLoadingDuration = false;
     }
