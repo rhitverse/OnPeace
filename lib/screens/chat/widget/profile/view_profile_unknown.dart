@@ -1,18 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:whatsapp_clone/colors.dart';
-
-final receiverProfileProvider =
-    FutureProvider.family<Map<String, dynamic>?, String>((ref, uid) async {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .get();
-      return doc.data();
-    });
+import 'package:whatsapp_clone/screens/chat/widget/profile/view_profile_screen.dart'
+    show receiverProfileProvider;
 
 String _formatDob(String raw, bool showYear) {
   try {

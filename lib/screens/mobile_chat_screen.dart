@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -10,6 +11,7 @@ import 'package:whatsapp_clone/screens/chat/widget/bottom_chat_field.dart';
 import 'package:whatsapp_clone/screens/chat/widget/chat_loader.dart';
 import 'package:whatsapp_clone/screens/chat/widget/date_chip.dart';
 import 'package:whatsapp_clone/screens/chat/widget/profile/view_profile_screen.dart';
+import 'package:whatsapp_clone/screens/chat/widget/profile/view_profile_unknown.dart';
 import 'package:whatsapp_clone/screens/chat/widget/receiver_message.dart';
 import 'package:whatsapp_clone/screens/chat/widget/sender_message.dart';
 import 'package:whatsapp_clone/screens/chat/provider/uploading_messages_provider.dart';
@@ -108,15 +110,35 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
     }
   }
 
-  void _openProfile() {
+  Future<void> _openProfile() async {
+    final currentUid = FirebaseAuth.instance.currentUser?.uid;
+    if (currentUid == null) return;
+
+    final friendsQuery = await FirebaseFirestore.instance
+        .collection('Friends')
+        .where('uid', isEqualTo: currentUid)
+        .where('friendUid', isEqualTo: widget.receiverUid)
+        .limit(1)
+        .get();
+
+    final isFriend = friendsQuery.docs.isNotEmpty;
+
+    if (!mounted) return;
+
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ViewProfileScreen(
-          receiverUid: widget.receiverUid,
-          receiverDisplayName: receiverDisplayName,
-          receiverProfilePic: receiverProfilePic,
-        ),
+        builder: (_) => isFriend
+            ? ViewProfileScreen(
+                receiverUid: widget.receiverUid,
+                receiverDisplayName: receiverDisplayName,
+                receiverProfilePic: receiverProfilePic,
+              )
+            : ViewProfileUnknown(
+                receiverUid: widget.receiverUid,
+                receiverDisplayName: receiverDisplayName,
+                receiverProfilePic: receiverProfilePic,
+              ),
       ),
     );
   }
