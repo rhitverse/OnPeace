@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:whatsapp_clone/colors.dart';
 import 'package:whatsapp_clone/screens/calls/controller/call_provider.dart';
 import 'package:whatsapp_clone/screens/chat/provider/chat_provider.dart';
+import 'package:whatsapp_clone/screens/chat/provider/pending_messages_provider.dart';
 import 'package:whatsapp_clone/screens/chat/widget/bottom_chat_field.dart';
 import 'package:whatsapp_clone/screens/chat/widget/chat_loader.dart';
 import 'package:whatsapp_clone/screens/chat/widget/date_chip.dart';
@@ -80,7 +81,22 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
 
     if (currentUserId == null) return;
     final messageText = _messageController.text.trim();
+    final tempId = DateTime.now().millisecondsSinceEpoch.toString();
+
+    ref
+        .read(pendingMessagesProvider.notifier)
+        .addPending(
+          PendingMessage(
+            tempId: tempId,
+            text: messageText,
+            senderId: currentUserId,
+            sentTime: DateTime.now(),
+            status: 'sending',
+          ),
+        );
+
     _messageController.clear();
+
     try {
       await ref
           .read(chatControllerProvider)
@@ -90,11 +106,28 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
             text: messageText,
             receiverId: widget.receiverUid,
           );
+
+      // Remove pending message after successful send
+      ref.read(pendingMessagesProvider.notifier).removePending(tempId);
     } catch (e) {
+      // Update status to failed
+      ref.read(pendingMessagesProvider.notifier).updateStatus(tempId, 'failed');
+
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Failed to send message')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Failed to send message'),
+            action: SnackBarAction(
+              label: 'Retry',
+              onPressed: () {
+                ref
+                    .read(pendingMessagesProvider.notifier)
+                    .removePending(tempId);
+                _messageController.text = messageText;
+              },
+            ),
+          ),
+        );
       }
     }
   }
@@ -239,14 +272,99 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                   .read(chatControllerProvider)
                   .getMessagesStream(widget.chatId),
               builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const ChatLoader();
-                }
-                if (snapshot.data!.isEmpty) {
-                  return const SizedBox();
+                final firebaseMessages =
+                    (snapshot.hasData ? snapshot.data! : [])
+                        .cast<Map<String, dynamic>>();
+                final pendingMessages = ref.watch(pendingMessagesProvider);
+
+                // Combine Firebase messages and pending messages, filtering out duplicates
+                final allMessages = <Map<String, dynamic>>[];
+
+                // Add Firebase messages
+                allMessages.addAll(firebaseMessages);
+
+                // Add pending messages, but skip ones that already appear in Firebase
+                for (final pm in pendingMessages) {
+                  bool isDuplicate = false;
+
+                  // Check if this pending message matches an existing Firebase message
+                  try {
+                    for (final fbMsg in firebaseMessages) {
+                      final fbTime = DateTime.tryParse(
+                        fbMsg['time'] as String? ?? '',
+                      );
+
+                      // Match by: sender + mediaType + (timestamp OR fileName)
+                      final senderMatch = fbMsg['senderId'] == pm.senderId;
+                      final mediaTypeMatch = fbMsg['mediaType'] == pm.mediaType;
+
+                      // For files, match by fileName (more reliable)
+                      final fileNameMatch =
+                          pm.fileName != null &&
+                          fbMsg['fileName'] == pm.fileName;
+
+                      // For media, match by timestamp (within 10 seconds for network delay)
+                      final timeMatch =
+                          fbTime != null &&
+                          pm.sentTime.difference(fbTime).inSeconds.abs() < 10;
+
+                      if (senderMatch &&
+                          mediaTypeMatch &&
+                          (fileNameMatch || timeMatch)) {
+                        isDuplicate = true;
+                        break;
+                      }
+                    }
+                  } catch (_) {}
+
+                  // Also skip if local file path matches Firebase message
+                  if (!isDuplicate && pm.localFilePath != null) {
+                    for (final fbMsg in firebaseMessages) {
+                      if (fbMsg['localFilePath'] == pm.localFilePath) {
+                        isDuplicate = true;
+                        break;
+                      }
+                    }
+                  }
+
+                  if (!isDuplicate) {
+                    allMessages.add({
+                      'id': pm.tempId,
+                      'text': pm.text,
+                      'senderId': pm.senderId,
+                      'time': pm.sentTime.toIso8601String(),
+                      'mediaUrl': pm.mediaUrl ?? pm.localFilePath,
+                      'mediaType': pm.mediaType,
+                      'fileName': pm.fileName,
+                      'fileSize': pm.fileSize,
+                      'duration': pm.duration,
+                      'isPending': true,
+                      'pendingStatus': pm.status,
+                      'localFilePath': pm.localFilePath,
+                    });
+                  }
                 }
 
-                final messages = snapshot.data!;
+                // Sort by time (latest first)
+                allMessages.sort((a, b) {
+                  try {
+                    final timeA = DateTime.parse(a['time'] ?? '');
+                    final timeB = DateTime.parse(b['time'] ?? '');
+                    return timeB.compareTo(timeA);
+                  } catch (_) {
+                    return 0;
+                  }
+                });
+
+                // Show loading state if still loading initial data
+                if (!snapshot.hasData && pendingMessages.isEmpty) {
+                  return const ChatLoader();
+                }
+
+                // Show loading state if no messages yet
+                if (allMessages.isEmpty) {
+                  return const ChatLoader();
+                }
 
                 return ListView.builder(
                   controller: _scrollController,
@@ -255,13 +373,16 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                     horizontal: 12,
                     vertical: 10,
                   ),
-                  itemCount: messages.length,
+                  itemCount: allMessages.length,
                   itemBuilder: (context, index) {
-                    final messageData = messages[index];
+                    final messageData = allMessages[index];
                     final senderId = messageData['senderId'] ?? '';
                     final text = messageData['text'] ?? '';
                     final timeStr = messageData['time'];
                     final isMe = senderId == currentUserId;
+                    final isPending = messageData['isPending'] ?? false;
+                    final pendingStatus =
+                        messageData['pendingStatus'] ?? 'sending';
 
                     final mediaUrl = messageData['mediaUrl'];
                     final mediaType = messageData['mediaType'];
@@ -286,17 +407,17 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                     bool showTime = true;
 
                     bool showDataChip = false;
-                    if (index == messages.length - 1) {
+                    if (index == allMessages.length - 1) {
                       showDataChip = true;
                     } else {
                       showDataChip = _isDifferentDay(
                         timeStr,
-                        messages[index + 1]['time'],
+                        allMessages[index + 1]['time'],
                       );
                     }
 
                     if (index > 0) {
-                      final prev = messages[index - 1];
+                      final prev = allMessages[index - 1];
                       if (prev['senderId'] == senderId) {
                         showTail = false;
                         isGrouped = true;
@@ -334,7 +455,9 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                                 fileName: fileName,
                                 fileSize: fileSize,
                                 duration: duration,
-                                isLoading: isLoading,
+                                isLoading:
+                                    isLoading ||
+                                    (isPending && pendingStatus == 'sending'),
                               )
                             : ReceiverMessage(
                                 text: text,

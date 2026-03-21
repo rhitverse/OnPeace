@@ -6,6 +6,7 @@ import 'package:whatsapp_clone/colors.dart';
 import 'package:whatsapp_clone/screens/chat/controller/chat_controller.dart';
 import 'package:whatsapp_clone/screens/chat/provider/chat_provider.dart';
 import 'package:whatsapp_clone/screens/chat/provider/uploading_messages_provider.dart';
+import 'package:whatsapp_clone/screens/chat/provider/pending_messages_provider.dart';
 import 'package:whatsapp_clone/screens/chat/widget/camera_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -170,6 +171,7 @@ class _AttachmentSheetState extends ConsumerState<AttachmentSheet>
     final currentUid = widget.currentUid;
     final chatController = ref.read(chatControllerProvider);
     final uploadingNotifier = ref.read(uploadingMessagesProvider.notifier);
+    final pendingNotifier = ref.read(pendingMessagesProvider.notifier);
 
     final List<_UploadTask> tasks = [];
 
@@ -180,12 +182,30 @@ class _AttachmentSheetState extends ConsumerState<AttachmentSheet>
 
       final mediaType = asset.type == AssetType.image ? 'image' : 'video';
       final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}_$i';
+      final fileSize = await file.length();
 
+      // Add to uploading messages for progress tracking
       uploadingNotifier.add(
         UploadingMessage(
           tempId: tempId,
           localFilePath: file.path,
           mediaType: mediaType,
+          fileSize: fileSize,
+          duration: asset.type == AssetType.video ? asset.duration : null,
+        ),
+      );
+
+      // Add to pending messages for instant UI display
+      pendingNotifier.addPending(
+        PendingMessage(
+          tempId: tempId,
+          text: '',
+          senderId: currentUid,
+          sentTime: DateTime.now(),
+          status: 'sending',
+          mediaType: mediaType,
+          localFilePath: file.path,
+          fileSize: fileSize,
           duration: asset.type == AssetType.video ? asset.duration : null,
         ),
       );
@@ -211,6 +231,7 @@ class _AttachmentSheetState extends ConsumerState<AttachmentSheet>
           currentUid: currentUid,
           chatController: chatController,
           uploadingNotifier: uploadingNotifier,
+          pendingNotifier: pendingNotifier,
         ),
       ),
     );
@@ -225,6 +246,7 @@ class _AttachmentSheetState extends ConsumerState<AttachmentSheet>
     required String currentUid,
     required ChatController chatController,
     required UploadingMessagesNotifier uploadingNotifier,
+    required PendingMessagesNotifier pendingNotifier,
   }) async {
     try {
       if (task.mediaType == 'image') {
@@ -243,8 +265,12 @@ class _AttachmentSheetState extends ConsumerState<AttachmentSheet>
           duration: task.duration,
         );
       }
+      // Remove from pending after successful upload
+      pendingNotifier.removePending(task.tempId);
     } catch (e) {
       debugPrint('Upload error (${task.tempId}): $e');
+      // Update pending message status to failed
+      pendingNotifier.updateStatus(task.tempId, 'failed');
     } finally {
       uploadingNotifier.remove(task.tempId);
     }

@@ -88,6 +88,13 @@ class ContactsListScreen extends StatelessWidget {
                         const SizedBox(height: 4),
                         Row(
                           children: [
+                            if (chat.lastMessageMediaType != null)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 4),
+                                child: _getMediaIcon(
+                                  chat.lastMessageMediaType!,
+                                ),
+                              ),
                             Expanded(
                               child: Text(
                                 chat.lastMessage,
@@ -133,5 +140,22 @@ class ContactsListScreen extends StatelessWidget {
         );
       },
     );
+  }
+
+  Icon _getMediaIcon(String mediaType) {
+    switch (mediaType) {
+      case 'image':
+        return const Icon(Icons.image_outlined, size: 20, color: Colors.grey);
+      case 'video':
+        return const Icon(
+          Icons.videocam_outlined,
+          size: 20,
+          color: Colors.grey,
+        );
+      case 'gif':
+        return const Icon(Icons.gif_box_outlined, size: 20, color: Colors.grey);
+      default:
+        return const Icon(Icons.attachment, size: 20, color: Colors.grey);
+    }
   }
 }

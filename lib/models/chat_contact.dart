@@ -8,6 +8,7 @@ class ChatContact {
   final DateTime lastMessageTime;
   final String lastMessage;
   final String lastMessageSenderId;
+  final String? lastMessageMediaType;
   final int unreadCount;
   final bool isOnline;
   final DateTime? lastSeen;
@@ -20,6 +21,7 @@ class ChatContact {
     required this.lastMessageTime,
     required this.lastMessage,
     required this.lastMessageSenderId,
+    this.lastMessageMediaType,
     this.unreadCount = 0,
     this.isOnline = false,
     this.lastSeen,
@@ -82,6 +84,7 @@ class ChatContact {
       lastMessage: map['lastMessage'] ?? '',
       lastMessageTime: messageTime,
       lastMessageSenderId: map['lastMessageSenderId'] ?? '',
+      lastMessageMediaType: map['lastMessageMediaType'],
       unreadCount: map['unreadCount_$currentUid'] ?? 0,
       isOnline: receiverUserData['isOnline'] ?? false,
       lastSeen: lastSeenTime,

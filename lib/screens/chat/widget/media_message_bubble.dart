@@ -350,37 +350,53 @@ class _MediaMessageBubbleState extends State<MediaMessageBubble> {
           ),
           GestureDetector(
             onTap: widget.onCancelUpload,
-            child: SizedBox(
-              width: 58,
-              height: 58,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  SizedBox(
-                    width: 58,
-                    height: 58,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.8,
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                        Colors.white,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 58,
+                  height: 58,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      SizedBox(
+                        width: 58,
+                        height: 58,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.8,
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
+                        ),
                       ),
-                    ),
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.35),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                      ),
+                    ],
                   ),
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.35),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.close,
+                ),
+                if (widget.fileSize != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    _formatFileSize(widget.fileSize!),
+                    style: const TextStyle(
                       color: Colors.white,
-                      size: 22,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
-              ),
+              ],
             ),
           ),
         ],
@@ -431,7 +447,9 @@ class _MediaMessageBubbleState extends State<MediaMessageBubble> {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  'Sending...',
+                  widget.fileSize != null
+                      ? '${_formatFileSize(widget.fileSize!)} • Sending...'
+                      : 'Sending...',
                   style: TextStyle(color: uiColor, fontSize: 11),
                 ),
               ],

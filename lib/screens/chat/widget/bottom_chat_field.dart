@@ -10,6 +10,7 @@ import 'package:whatsapp_clone/screens/chat/widget/attachment_sheet.dart';
 import 'package:whatsapp_clone/screens/chat/widget/custom_emoji_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:whatsapp_clone/screens/chat/widget/voice_recorder_field.dart';
+import 'package:whatsapp_clone/screens/chat/widget/create_poll_screen.dart';
 
 enum ChatInputMode { none, attachment, recording }
 
@@ -92,6 +93,32 @@ class _BottomChatFieldState extends ConsumerState<BottomChatField>
     final Uri googleMapUrl = Uri.parse("geo:0,0?q=my+location");
     if (await canLaunchUrl(googleMapUrl)) {
       await launchUrl(googleMapUrl, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  Future<void> _openPollCreation() async {
+    setState(() {
+      _mode = ChatInputMode.none;
+      _animController.reverse();
+    });
+
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    if (currentUserId == null) return;
+
+    final pollData = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CreatePollScreen(
+          chatId: widget.chatId,
+          currentUserId: currentUserId,
+        ),
+      ),
+    );
+
+    if (pollData != null && mounted) {
+      // Handle poll creation here - you'll implement this with chat controller
+      debugPrint('Poll created: ${pollData['question']}');
+      debugPrint('Options: ${pollData['options']}');
     }
   }
 
@@ -280,14 +307,16 @@ class _BottomChatFieldState extends ConsumerState<BottomChatField>
                 svgColor: const Color(0xffFF8314),
                 iconHeight: 55,
                 iconWidth: 55,
-                onTap: () {},
+                onTap: _openPollCreation,
               ),
               _attachmentItem(
                 svgPath: 'assets/svg/diary.svg',
                 label: 'Diary',
                 iconHeight: 52,
                 iconWidth: 52,
-                onTap: () {},
+                onTap: () {
+                  // TODO: Implement diary feature
+                },
               ),
             ],
           ),

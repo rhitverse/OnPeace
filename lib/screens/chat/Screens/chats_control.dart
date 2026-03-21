@@ -69,6 +69,7 @@ class ChatControl extends ConsumerWidget {
                   .get();
 
               String realLastMessage = 'Message';
+              String? lastMessageMediaType;
 
               if (lastMsgSnap.docs.isNotEmpty) {
                 final lastMsgData = lastMsgSnap.docs.first.data();
@@ -77,18 +78,19 @@ class ChatControl extends ConsumerWidget {
                 final mediaType = lastMsgData['mediaType'];
 
                 if (mediaType != null) {
+                  lastMessageMediaType = mediaType;
                   switch (mediaType) {
                     case 'image':
-                      realLastMessage = '🖼️ Photo';
+                      realLastMessage = 'Photo';
                       break;
                     case 'video':
-                      realLastMessage = '🎥 Video';
+                      realLastMessage = 'Video';
                       break;
                     case 'gif':
                       realLastMessage = 'GIF';
                       break;
                     default:
-                      realLastMessage = '📄 File';
+                      realLastMessage = 'File';
                   }
                 } else {
                   final textField = senderId == userId
@@ -107,6 +109,9 @@ class ChatControl extends ConsumerWidget {
               }
 
               modifiedData['lastMessage'] = realLastMessage;
+              if (lastMessageMediaType != null) {
+                modifiedData['lastMessageMediaType'] = lastMessageMediaType;
+              }
 
               return ChatContact.fromMap(
                 modifiedData,

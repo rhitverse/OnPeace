@@ -6,7 +6,7 @@ import 'package:video_player/video_player.dart';
 import 'dart:io';
 import 'package:whatsapp_clone/colors.dart';
 import 'package:whatsapp_clone/screens/chat/provider/chat_provider.dart';
-import 'package:whatsapp_clone/screens/chat/provider/uploading_messages_provider.dart';
+import 'package:whatsapp_clone/screens/chat/provider/pending_messages_provider.dart';
 
 class AttachmentSendScreen extends ConsumerStatefulWidget {
   final String chatId;
@@ -29,7 +29,6 @@ class AttachmentSendScreen extends ConsumerStatefulWidget {
 
 class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
   List<FileAttachment> selectedFiles = [];
-  Set<int> sendingFileIndices = {};
 
   @override
   void initState() {
@@ -120,10 +119,6 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
     return 'file';
   }
 
-  void _cancelFileSend(int index) {
-    setState(() => sendingFileIndices.remove(index));
-  }
-
   Future<void> _sendFiles() async {
     if (selectedFiles.isEmpty) return;
 
@@ -132,39 +127,65 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
 
     try {
       final chatController = ref.read(chatControllerProvider);
-      final uploadingMessagesNotifier = ref.read(
-        uploadingMessagesProvider.notifier,
-      );
+      final pendingNotifier = ref.read(pendingMessagesProvider.notifier);
 
+      // Close the attachment screen immediately
+      if (mounted) Navigator.pop(context);
+
+      // Add all files to pending messages first
+      for (int i = 0; i < selectedFiles.length; i++) {
+        final file = selectedFiles[i];
+        final mediaType = _getMediaType(file.fileName);
+        final tempId = 'temp_file_${DateTime.now().millisecondsSinceEpoch}_$i';
+
+        int? duration;
+        if (mediaType == 'video') {
+          duration = await _getVideoDuration(file.filePath);
+        }
+
+        // Add to pending messages for instant UI display
+        pendingNotifier.addPending(
+          PendingMessage(
+            tempId: tempId,
+            text: '',
+            senderId: currentUserId,
+            sentTime: DateTime.now(),
+            status: 'sending',
+            mediaType: mediaType,
+            fileName: file.fileName,
+            fileSize: file.fileSize,
+            duration: duration,
+            localFilePath: file.filePath,
+          ),
+        );
+      }
+
+      // Upload files in background
       for (int i = 0; i < selectedFiles.length; i++) {
         final file = selectedFiles[i];
         final fileObj = File(file.filePath);
-
-        setState(() => sendingFileIndices.add(i));
-
         final mediaType = _getMediaType(file.fileName);
+        final tempId = 'temp_file_${DateTime.now().millisecondsSinceEpoch}_$i';
 
         try {
-          String? messageId;
-
           if (mediaType == 'image') {
-            messageId = await chatController.sendImageAndGetId(
+            await chatController.sendImageAndGetId(
               chatId: widget.chatId,
               senderId: currentUserId,
               imageFile: fileObj,
               receiverId: widget.receiverUid,
             );
           } else if (mediaType == 'video') {
-            final duration = await _getVideoDuration(file.filePath);
-            messageId = await chatController.sendVideoAndGetId(
+            final videoDuration = await _getVideoDuration(file.filePath);
+            await chatController.sendVideoAndGetId(
               chatId: widget.chatId,
               senderId: currentUserId,
               videoFile: fileObj,
               receiverId: widget.receiverUid,
-              duration: duration,
+              duration: videoDuration,
             );
           } else {
-            messageId = await chatController.sendFileAndGetId(
+            await chatController.sendFileAndGetId(
               chatId: widget.chatId,
               senderId: currentUserId,
               file: fileObj,
@@ -173,46 +194,17 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
             );
           }
 
-          if (messageId != null) {
-            uploadingMessagesNotifier.removeUploading(messageId);
-          }
-
-          setState(() => sendingFileIndices.remove(i));
+          // Remove from pending after successful upload
+          pendingNotifier.removePending(tempId);
           debugPrint('File ${file.fileName} sent successfully!');
         } catch (e) {
-          setState(() => sendingFileIndices.remove(i));
           debugPrint('Error sending file ${file.fileName}: $e');
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Error sending ${file.fileName}: $e'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
+          // Update pending message status to failed
+          pendingNotifier.updateStatus(tempId, 'failed');
         }
       }
-
-      if (mounted && sendingFileIndices.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''} sent successfully!',
-            ),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.pop(context);
-      }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error sending files: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      debugPrint('Error in _sendFiles: $e');
     }
   }
 
@@ -260,9 +252,7 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: ElevatedButton.icon(
-              onPressed: selectedFiles.isEmpty || sendingFileIndices.isNotEmpty
-                  ? null
-                  : _sendFiles,
+              onPressed: selectedFiles.isEmpty ? null : _sendFiles,
               icon: const Icon(Icons.send),
               label: const Text('Send'),
               style: ElevatedButton.styleFrom(
@@ -288,8 +278,6 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
   }
 
   Widget _buildFileCard(FileAttachment file, int index) {
-    final isSending = sendingFileIndices.contains(index);
-
     return Card(
       color: Colors.grey[900],
       margin: const EdgeInsets.only(bottom: 12),
@@ -325,29 +313,12 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
                     _formatFileSize(file.fileSize),
                     style: TextStyle(color: Colors.grey[500], fontSize: 12),
                   ),
-                  if (isSending)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        'Sending...',
-                        style: TextStyle(
-                          color: Colors.orange,
-                          fontSize: 10,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ),
                 ],
               ),
             ),
             IconButton(
-              icon: Icon(
-                Icons.close,
-                color: isSending ? Colors.orange : Colors.red,
-              ),
-              onPressed: isSending
-                  ? () => _cancelFileSend(index)
-                  : () => _removeFile(index),
+              icon: const Icon(Icons.close, color: Colors.red),
+              onPressed: () => _removeFile(index),
             ),
           ],
         ),
