@@ -10,7 +10,6 @@ import 'package:whatsapp_clone/screens/chat/widget/bottom_chat_field.dart';
 import 'package:whatsapp_clone/screens/chat/widget/chat_loader.dart';
 import 'package:whatsapp_clone/screens/chat/widget/date_chip.dart';
 import 'package:whatsapp_clone/screens/chat/widget/profile/view_profile_screen.dart';
-import 'package:whatsapp_clone/screens/chat/widget/profile/view_profile_unknown.dart';
 import 'package:whatsapp_clone/screens/chat/widget/receiver_message.dart';
 import 'package:whatsapp_clone/screens/chat/widget/sender_message.dart';
 import 'package:whatsapp_clone/screens/chat/provider/uploading_messages_provider.dart';
@@ -113,7 +112,7 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ViewProfileUnknown(
+        builder: (_) => ViewProfileScreen(
           receiverUid: widget.receiverUid,
           receiverDisplayName: receiverDisplayName,
           receiverProfilePic: receiverProfilePic,
