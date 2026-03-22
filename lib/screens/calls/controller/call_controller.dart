@@ -1,4 +1,4 @@
-import 'dart:async';
+/*import 'dart:async';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -58,55 +58,70 @@ class CallController extends StateNotifier<CallState> {
     required bool isVideo,
     required BuildContext context,
   }) async {
-    final callId = await _repo.startCall(
-      receiverId: receiverId,
-      isVideo: isVideo,
-    );
-    state = state.copyWith(currentCallId: callId, isVideoOn: isVideo);
-    await _repo.enableVideo(isVideo);
+    try {
+      final callId = await _repo.startCall(
+        receiverId: receiverId,
+        isVideo: isVideo,
+      );
+      state = state.copyWith(currentCallId: callId, isVideoOn: isVideo);
+      await _repo.enableVideo(isVideo);
 
-    navigatorKey.currentState?.push(
-      MaterialPageRoute(
-        settings: const RouteSettings(name: 'call-screen'),
-        builder: (_) => const CallScreen(),
-      ),
-    );
+      navigatorKey.currentState?.push(
+        MaterialPageRoute(
+          settings: const RouteSettings(name: 'call-screen'),
+          builder: (_) => const CallScreen(),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error starting call: $e');
+      rethrow;
+    }
   }
 
   Future<void> acceptCall() async {
-    if (state.incomingCall == null) return;
-    final call = state.incomingCall!;
+    try {
+      if (state.incomingCall == null) return;
+      final call = state.incomingCall!;
 
-    state = state.copyWith(isVideoOn: call.isVideo, clearIncomingCall: true);
-    await _repo.enableVideo(call.isVideo);
-    await _repo.acceptCall(call);
-    state = state.copyWith(currentCallId: call.callId);
+      state = state.copyWith(isVideoOn: call.isVideo, clearIncomingCall: true);
+      await _repo.enableVideo(call.isVideo);
+      await _repo.acceptCall(call);
+      state = state.copyWith(currentCallId: call.callId);
 
-    navigatorKey.currentState?.push(
-      MaterialPageRoute(
-        settings: const RouteSettings(name: 'call-screen'),
-        builder: (_) => const CallScreen(),
-      ),
-    );
+      navigatorKey.currentState?.push(
+        MaterialPageRoute(
+          settings: const RouteSettings(name: 'call-screen'),
+          builder: (_) => const CallScreen(),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error accepting call: $e');
+      state = state.copyWith(clearIncomingCall: true);
+      rethrow;
+    }
   }
 
   Future<void> endCall(BuildContext? context) async {
-    if (state.currentCallId.isEmpty) {
-      state = state.copyWith(clearIncomingCall: true);
-      return;
+    try {
+      if (state.currentCallId.isEmpty) {
+        state = state.copyWith(clearIncomingCall: true);
+        return;
+      }
+
+      await _repo.endCall(state.currentCallId);
+      state = state.copyWith(
+        isCallActive: false,
+        clearRemoteUid: true,
+        clearIncomingCall: true,
+        currentCallId: '',
+      );
+
+      navigatorKey.currentState?.popUntil(
+        (route) => route.settings.name != 'call-screen',
+      );
+    } catch (e) {
+      debugPrint('Error ending call: $e');
     }
-
-    await _repo.endCall(state.currentCallId);
-    state = state.copyWith(
-      isCallActive: false,
-      clearRemoteUid: true,
-      clearIncomingCall: true,
-      currentCallId: '',
-    );
-
-    navigatorKey.currentState?.popUntil(
-      (route) => route.settings.name != 'call-screen',
-    );
   }
 
   Future<void> toggleMute() async {
@@ -129,4 +144,4 @@ class CallController extends StateNotifier<CallState> {
     _repo.dispose();
     super.dispose();
   }
-}
+}*/

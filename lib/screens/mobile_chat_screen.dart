@@ -225,13 +225,13 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
         actions: [
           GestureDetector(
             onTap: () {
-              ref
+              /* ref
                   .read(callControllerProvider.notifier)
                   .startCall(
                     receiverId: widget.receiverUid,
                     isVideo: true,
                     context: context,
-                  );
+                  );*/
             },
             child: SvgPicture.asset(
               'assets/svg/videocall.svg',
@@ -243,13 +243,13 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
           SizedBox(width: 16),
           GestureDetector(
             onTap: () {
-              ref
+              /*ref
                   .read(callControllerProvider.notifier)
                   .startCall(
                     receiverId: widget.receiverUid,
                     isVideo: false,
                     context: context,
-                  );
+                  );*/
             },
             child: SvgPicture.asset(
               'assets/svg/call1.svg',

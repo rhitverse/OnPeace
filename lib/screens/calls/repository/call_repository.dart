@@ -1,4 +1,4 @@
-import 'package:agora_rtc_engine/agora_rtc_engine.dart';
+/*import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:whatsapp_clone/models/call_model.dart';
@@ -15,6 +15,11 @@ class CallRepository {
     agoraEngine = createAgoraRtcEngine();
     await agoraEngine.initialize(RtcEngineContext(appId: appId));
     await agoraEngine.enableAudio();
+  }
+
+  int _getUidFromUserId(String userId) {
+    return userId.hashCode.abs() %
+        4294967295; // Ensure positive int and within Agora UID range
   }
 
   Future<void> enableVideo(bool enable) async {
@@ -45,10 +50,11 @@ class CallRepository {
     );
     await _firestore.collection('calls').doc(callId).set(call.toMap());
 
+    final uid = _getUidFromUserId(currentUser.uid);
     await agoraEngine.joinChannel(
       token: _tempToken,
       channelId: callId,
-      uid: 0,
+      uid: uid,
       options: const ChannelMediaOptions(
         clientRoleType: ClientRoleType.clientRoleBroadcaster,
       ),
@@ -61,10 +67,12 @@ class CallRepository {
     await _firestore.collection('calls').doc(call.callId).update({
       'status': 'accepted',
     });
+    final currentUser = _auth.currentUser!;
+    final uid = _getUidFromUserId(currentUser.uid);
     await agoraEngine.joinChannel(
       token: _tempToken,
       channelId: call.callId,
-      uid: 0,
+      uid: uid,
       options: const ChannelMediaOptions(
         clientRoleType: ClientRoleType.clientRoleBroadcaster,
       ),
@@ -102,4 +110,4 @@ class CallRepository {
     await agoraEngine.leaveChannel();
     await agoraEngine.release();
   }
-}
+}*/

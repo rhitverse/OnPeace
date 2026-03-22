@@ -9,8 +9,6 @@
             "name": "whatsapp_clone",
             "request": "launch",
             "type": "dart",
-            "pauseIsolatesOnStart": false, 
-             "pauseIsolatesOnExit": false 
         },
         {
             "name": "whatsapp_clone (profile mode)",

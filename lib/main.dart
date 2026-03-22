@@ -2,12 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/common/utils/navigator_key.dart';
 import 'package:whatsapp_clone/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:whatsapp_clone/features/app/splash/splash_screen.dart';
-import 'package:whatsapp_clone/screens/calls/controller/call_provider.dart';
-import 'package:whatsapp_clone/screens/calls/screen/incoming_call_screen.dart';
 
 void main() {
   runZonedGuarded(
@@ -24,30 +21,18 @@ void main() {
   );
 }
 
-class MyApp extends ConsumerWidget {
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final callState = ref.watch(callControllerProvider);
-
+  Widget build(BuildContext context) {
     return MaterialApp(
-      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'Whatsapp Clone',
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: backgroundColor,
       ),
-      home: const SplashScreen(),
-      builder: (context, child) {
-        return Stack(
-          children: [
-            child ?? const SizedBox(),
-            if (callState.incomingCall != null)
-              const Positioned.fill(child: IncomingCallScreen()),
-          ],
-        );
-      },
+      home: SplashScreen(),
     );
   }
 }

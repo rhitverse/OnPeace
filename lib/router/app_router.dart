@@ -1,4 +1,4 @@
-import 'package:go_router/go_router.dart';
+/*import 'package:go_router/go_router.dart';
 import 'package:whatsapp_clone/features/app/splash/splash_screen.dart';
 import 'package:whatsapp_clone/screens/calls/screen/calls_screen.dart';
 import 'package:whatsapp_clone/screens/calls/screen/incoming_call_screen.dart';
@@ -18,4 +18,4 @@ final appRouter = GoRouter(
       builder: (context, state) => const IncomingCallScreen(),
     ),
   ],
-);
+);*/

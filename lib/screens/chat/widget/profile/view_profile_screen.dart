@@ -204,25 +204,25 @@ class ViewProfileScreen extends ConsumerWidget {
                               height: 32,
                             ),
                             onTap: () {
-                              ref
+                              /*  ref
                                   .read(callControllerProvider.notifier)
                                   .startCall(
                                     receiverId: receiverUid,
                                     isVideo: false,
                                     context: context,
-                                  );
+                                  );*/
                             },
                           ),
                           const SizedBox(width: 10),
                           _buildCircularIcon(
                             onTap: () {
-                              ref
+                              /* ref
                                   .read(callControllerProvider.notifier)
                                   .startCall(
                                     receiverId: receiverUid,
                                     isVideo: true,
                                     context: context,
-                                  );
+                                  );*/
                             },
                             child: SvgPicture.asset(
                               'assets/svg/videocall.svg',
