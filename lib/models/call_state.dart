@@ -1,41 +1,43 @@
-import 'package:whatsapp_clone/models/call_model.dart';
-
 class CallState {
-  final bool isCallActive;
-  final bool isMuted;
-  final bool isVideoOn;
-  final int? remoteUid;
-  final CallModel? incomingCall;
   final String currentCallId;
+  final String? remoteUid;
+  final bool isVideoOn;
+  final bool isMuted;
+  final bool isCallActive;
+  final dynamic incomingCall;
+  final String channelName;
 
   const CallState({
-    this.isCallActive = false,
-    this.isMuted = false,
-    this.isVideoOn = true,
-    this.remoteUid,
-    this.incomingCall,
     this.currentCallId = '',
+    this.remoteUid,
+    this.isVideoOn = false,
+    this.isMuted = false,
+    this.isCallActive = false,
+    this.incomingCall,
+    this.channelName = '',
   });
 
   CallState copyWith({
-    bool? isCallActive,
-    bool? isMuted,
-    bool? isVideoOn,
-    int? remoteUid,
-    CallModel? incomingCall,
     String? currentCallId,
+    String? remoteUid,
+    bool? isVideoOn,
+    bool? isMuted,
+    bool? isCallActive,
+    dynamic incomingCall,
+    String? channelName,
     bool clearRemoteUid = false,
     bool clearIncomingCall = false,
   }) {
     return CallState(
-      isCallActive: isCallActive ?? this.isCallActive,
-      isMuted: isMuted ?? this.isMuted,
+      currentCallId: currentCallId ?? this.currentCallId,
+      remoteUid: clearRemoteUid ? null : (remoteUid ?? this.remoteUid),
       isVideoOn: isVideoOn ?? this.isVideoOn,
-      remoteUid: clearRemoteUid ? null : remoteUid ?? this.remoteUid,
+      isMuted: isMuted ?? this.isMuted,
+      isCallActive: isCallActive ?? this.isCallActive,
       incomingCall: clearIncomingCall
           ? null
-          : incomingCall ?? this.incomingCall,
-      currentCallId: currentCallId ?? this.currentCallId,
+          : (incomingCall ?? this.incomingCall),
+      channelName: channelName ?? this.channelName,
     );
   }
 }

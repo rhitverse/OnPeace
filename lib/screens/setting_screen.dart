@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:whatsapp_clone/colors.dart';
+import 'package:whatsapp_clone/core/providers/theme_provider.dart';
 import 'package:whatsapp_clone/features/app/welcome/welcome_page.dart';
 import 'package:whatsapp_clone/features/auth/repository/auth_providers.dart';
 import 'package:whatsapp_clone/screens/settings/account_screen.dart';
@@ -145,7 +146,13 @@ class SettingScreen extends ConsumerWidget {
           _svgTile(
             icon: Icons.palette_outlined,
             "Themes",
-            onTap: () => _go(context, const ThemeScreen()),
+            onTap: () => _go(
+              context,
+              ThemeScreen(
+                initialIsDarkTheme:
+                    ref.read(appThemeProvider) == ThemeMode.dark,
+              ),
+            ),
           ),
           _svgTile(
             svgPath: "assets/svg/call.svg",

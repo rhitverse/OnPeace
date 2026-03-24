@@ -3,8 +3,8 @@ import 'package:flutter_svg/svg.dart';
 import 'package:whatsapp_clone/colors.dart';
 import 'package:whatsapp_clone/info.dart';
 
-class CallsScreen extends StatelessWidget {
-  const CallsScreen({super.key});
+class CallDetailsScreen extends StatelessWidget {
+  const CallDetailsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

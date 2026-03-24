@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:whatsapp_clone/colors.dart';
+import 'package:whatsapp_clone/core/providers/theme_provider.dart';
 
-class ThemeScreen extends StatefulWidget {
-  const ThemeScreen({super.key});
+class ThemeScreen extends ConsumerStatefulWidget {
+  const ThemeScreen({super.key, required this.initialIsDarkTheme});
+
+  final bool initialIsDarkTheme;
 
   @override
-  State<ThemeScreen> createState() => _ThemeScreenState();
+  ConsumerState<ThemeScreen> createState() => _ThemeScreenState();
 }
 
-class _ThemeScreenState extends State<ThemeScreen>
+class _ThemeScreenState extends ConsumerState<ThemeScreen>
     with SingleTickerProviderStateMixin {
   bool isDarkTheme = true;
   late AnimationController _controller;
@@ -17,6 +21,8 @@ class _ThemeScreenState extends State<ThemeScreen>
   @override
   void initState() {
     super.initState();
+    isDarkTheme = widget.initialIsDarkTheme;
+
     _controller = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -26,6 +32,10 @@ class _ThemeScreenState extends State<ThemeScreen>
       begin: 1.0,
       end: 0.0,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+
+    if (!isDarkTheme) {
+      _controller.value = 1.0;
+    }
   }
 
   @override
@@ -35,22 +45,28 @@ class _ThemeScreenState extends State<ThemeScreen>
   }
 
   void _toggleTheme() {
+    _applyThemeSelection(!isDarkTheme);
+  }
+
+  void _applyThemeSelection(bool darkTheme) {
     setState(() {
-      isDarkTheme = !isDarkTheme;
-      if (isDarkTheme) {
+      isDarkTheme = darkTheme;
+      if (darkTheme) {
         _controller.reverse();
       } else {
         _controller.forward();
       }
     });
+
+    ref.read(appThemeProvider.notifier).setDarkTheme(darkTheme);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: isDarkTheme ? backgroundColor : Colors.grey[100],
+      backgroundColor: isDarkTheme ? backgroundColor : Colors.white,
       appBar: AppBar(
-        backgroundColor: isDarkTheme ? backgroundColor : Color(0xFF87CEEB),
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           onPressed: () {
@@ -157,6 +173,7 @@ class _ThemeScreenState extends State<ThemeScreen>
                     title: 'Light Theme',
                     isSelected: !isDarkTheme,
                     color: Colors.orange,
+                    onTap: () => _applyThemeSelection(false),
                   ),
                   const SizedBox(height: 15),
                   _buildThemeOption(
@@ -164,6 +181,7 @@ class _ThemeScreenState extends State<ThemeScreen>
                     title: 'Dark Theme',
                     isSelected: isDarkTheme,
                     color: Colors.indigo,
+                    onTap: () => _applyThemeSelection(true),
                   ),
                 ],
               ),
@@ -346,40 +364,45 @@ class _ThemeScreenState extends State<ThemeScreen>
     required String title,
     required bool isSelected,
     required Color color,
+    required VoidCallback onTap,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-      decoration: BoxDecoration(
-        color: isSelected
-            ? (isDarkTheme ? color.withOpacity(0.2) : color.withOpacity(0.1))
-            : (isDarkTheme ? Colors.grey[800] : Colors.grey[200]),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isSelected ? color : Colors.transparent,
-          width: 2,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? (isDarkTheme ? color.withOpacity(0.2) : color.withOpacity(0.1))
+              : (isDarkTheme ? Colors.grey[800] : Colors.grey[100]),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? color : Colors.transparent,
+            width: 2,
+          ),
         ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            color: isSelected
-                ? color
-                : (isDarkTheme ? Colors.grey : Colors.grey[600]),
-            size: 30,
-          ),
-          const SizedBox(width: 15),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: isDarkTheme ? whiteColor : Colors.black,
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isSelected
+                  ? color
+                  : (isDarkTheme ? Colors.grey : Colors.grey[600]),
+              size: 30,
             ),
-          ),
-          const Spacer(),
-          if (isSelected) Icon(Icons.check_circle, color: color, size: 24),
-        ],
+            const SizedBox(width: 15),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: isDarkTheme ? whiteColor : backgroundColor,
+              ),
+            ),
+            const Spacer(),
+            if (isSelected) Icon(Icons.check_circle, color: color, size: 24),
+          ],
+        ),
       ),
     );
   }

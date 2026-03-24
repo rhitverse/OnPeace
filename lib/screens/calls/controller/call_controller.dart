@@ -1,4 +1,4 @@
-/*import 'dart:async';
+import 'dart:async';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -7,46 +7,80 @@ import 'package:whatsapp_clone/common/utils/navigator_key.dart';
 import 'package:whatsapp_clone/models/call_state.dart';
 import 'package:whatsapp_clone/screens/calls/repository/call_repository.dart';
 import 'package:whatsapp_clone/screens/calls/screen/calls_screen.dart';
+import 'package:whatsapp_clone/widgets/helpful_widgets/custom_messenger.dart';
+
+final callRepositoryProvider = Provider((ref) => CallRepository());
+
+final callControllerProvider = StateNotifierProvider<CallController, CallState>(
+  (ref) {
+    final repository = ref.watch(callRepositoryProvider);
+    return CallController(repo: repository, ref: ref);
+  },
+);
 
 class CallController extends StateNotifier<CallState> {
   final CallRepository _repo;
   StreamSubscription? _incomingCallSub;
+  bool _agoraInitialized = false;
 
   CallController({required CallRepository repo, required Ref ref})
     : _repo = repo,
       super(const CallState()) {
-    _initAgora();
-    _listenIncomingCalls();
+    _initializeAsync();
   }
 
+  Future<void> _initializeAsync() async {
+    try {
+      await _initAgora();
+      _agoraInitialized = true;
+      _listenIncomingCalls();
+    } catch (e) {
+      print('❌ Failed to initialize Agora: $e');
+      _agoraInitialized = false;
+    }
+  }
+
+  RtcEngine get agoraEngine => _repo.agoraEngine;
+
   Future<void> _initAgora() async {
-    await _repo.initAgora();
-    _repo.agoraEngine.registerEventHandler(
-      RtcEngineEventHandler(
-        onJoinChannelSuccess: (connection, elapsed) {
-          state = state.copyWith(isCallActive: true);
-        },
-        onUserJoined: (connection, uid, elapsed) {
-          state = state.copyWith(remoteUid: uid);
-        },
-        onUserOffline: (connection, uid, reason) {
-          state = state.copyWith(clearRemoteUid: true);
-          endCall(null);
-        },
-        onLeaveChannel: (connection, stats) {
-          state = state.copyWith(isCallActive: false);
-        },
-      ),
-    );
+    try {
+      await _repo.iniAgora();
+      _repo.agoraEngine.registerEventHandler(
+        RtcEngineEventHandler(
+          onJoinChannelSuccess: (connection, elapsed) {
+            print('✅ Joined channel successfully');
+            state = state.copyWith(isCallActive: true);
+          },
+          onUserJoined: (connection, uid, elapsed) {
+            print('✅ Remote user joined - UID: $uid');
+            state = state.copyWith(remoteUid: uid.toString());
+          },
+          onUserOffline: (connection, uid, reason) {
+            print('❌ Remote user offline - UID: $uid');
+            state = state.copyWith(clearRemoteUid: true);
+            endCall(null);
+          },
+          onLeaveChannel: (connection, stats) {
+            print('✅ Left channel');
+            state = state.copyWith(isCallActive: false);
+          },
+          onError: (ErrorCodeType err, String msg) {
+            print('❌ Agora Error: $err - $msg');
+          },
+        ),
+      );
+    } catch (e) {
+      print('❌ Error initializing Agora: $e');
+    }
   }
 
   void _listenIncomingCalls() {
     FirebaseAuth.instance.authStateChanges().listen((user) {
       if (user == null) return;
-
       _incomingCallSub?.cancel();
       _incomingCallSub = _repo.listenForIncomingCall(user.uid).listen((call) {
         if (call != null) {
+          print('Incoming call from: ${call.callerName}');
           state = state.copyWith(incomingCall: call);
         }
       });
@@ -59,89 +93,141 @@ class CallController extends StateNotifier<CallState> {
     required BuildContext context,
   }) async {
     try {
-      final callId = await _repo.startCall(
+      print('Starting call to: $receiverId');
+
+      final channelName = await _repo.startCall(
         receiverId: receiverId,
         isVideo: isVideo,
       );
-      state = state.copyWith(currentCallId: callId, isVideoOn: isVideo);
-      await _repo.enableVideo(isVideo);
+      state = state.copyWith(
+        isVideoOn: isVideo,
+        channelName: channelName,
+        currentCallId: channelName,
+      );
 
       navigatorKey.currentState?.push(
         MaterialPageRoute(
           settings: const RouteSettings(name: 'call-screen'),
-          builder: (_) => const CallScreen(),
+          builder: (_) => const CallsScreen(),
         ),
       );
+      print('Call started successfully');
     } catch (e) {
-      debugPrint('Error starting call: $e');
+      print('Error starting call: $e');
+      if (context.mounted) {
+        CustomMessenger.show(context, 'Error starting call: $e');
+      }
       rethrow;
     }
   }
 
-  Future<void> acceptCall() async {
+  Future<void> acceptCall(BuildContext context) async {
     try {
-      if (state.incomingCall == null) return;
-      final call = state.incomingCall!;
+      if (state.incomingCall == null) {
+        print('No incoming call to accept');
+        return;
+      }
 
-      state = state.copyWith(isVideoOn: call.isVideo, clearIncomingCall: true);
-      await _repo.enableVideo(call.isVideo);
+      final call = state.incomingCall!;
+      print('Accepting call from: ${call.callerName}');
+
+      state = state.copyWith(isVideoOn: call.isVideo, channelName: call.callId);
       await _repo.acceptCall(call);
-      state = state.copyWith(currentCallId: call.callId);
+      state = state.copyWith(
+        currentCallId: call.callId,
+        channelName: call.callId,
+        clearIncomingCall: true,
+      );
 
       navigatorKey.currentState?.push(
         MaterialPageRoute(
           settings: const RouteSettings(name: 'call-screen'),
-          builder: (_) => const CallScreen(),
+          builder: (_) => const CallsScreen(),
         ),
       );
+      print('Call accepted successfully');
     } catch (e) {
-      debugPrint('Error accepting call: $e');
+      print('Error accepting call: $e');
       state = state.copyWith(clearIncomingCall: true);
-      rethrow;
+      if (context.mounted) {
+        CustomMessenger.show(context, 'Error accepting call: $e');
+      }
+    }
+  }
+
+  void rejectCall(BuildContext context) {
+    try {
+      if (state.incomingCall == null) return;
+      print('Call rejected');
+      state = state.copyWith(clearIncomingCall: true);
+      CustomMessenger.show(context, 'Call rejected');
+    } catch (e) {
+      print('Error rejecting call: $e');
     }
   }
 
   Future<void> endCall(BuildContext? context) async {
     try {
       if (state.currentCallId.isEmpty) {
+        print('No active call to end');
         state = state.copyWith(clearIncomingCall: true);
         return;
       }
-
+      print('Ending call: ${state.currentCallId}');
       await _repo.endCall(state.currentCallId);
-      state = state.copyWith(
-        isCallActive: false,
-        clearRemoteUid: true,
-        clearIncomingCall: true,
-        currentCallId: '',
-      );
+      state = const CallState();
 
-      navigatorKey.currentState?.popUntil(
-        (route) => route.settings.name != 'call-screen',
-      );
+      if (context != null && context.mounted) {
+        navigatorKey.currentState?.pop();
+      }
+
+      print('call ended Successfully');
     } catch (e) {
-      debugPrint('Error ending call: $e');
+      print('Error ending call: $e');
+      if (context != null && context.mounted) {
+        CustomMessenger.show(context, 'Error ending call: $e');
+      }
     }
   }
 
   Future<void> toggleMute() async {
-    state = state.copyWith(isMuted: !state.isMuted);
-    await _repo.muteAudio(state.isMuted);
+    try {
+      final newMuteState = !state.isMuted;
+      await _repo.muteAudio(newMuteState);
+      state = state.copyWith(isMuted: newMuteState);
+      print('${newMuteState ? '🔇' : '🔊'} Audio muted: $newMuteState');
+    } catch (e) {
+      print('Error toggling mute: $e');
+    }
   }
 
   Future<void> toggleVideo() async {
-    state = state.copyWith(isVideoOn: !state.isVideoOn);
-    await _repo.enableVideo(state.isVideoOn);
+    try {
+      final newVideoState = !state.isVideoOn;
+      await _repo.enableVideo(newVideoState);
+      state = state.copyWith(isVideoOn: newVideoState);
+      print(
+        '${newVideoState ? 'videoDisable' : 'videoEnable'} Video enable: $newVideoState',
+      );
+    } catch (e) {
+      print('❌ Error toggling video: $e');
+    }
   }
 
   Future<void> switchCamera() async {
-    await _repo.switchCamera();
+    try {
+      await _repo.switchCamera();
+      print('Camera switched');
+    } catch (e) {
+      print('Error switching camera: $e');
+    }
   }
 
   @override
-  void dispose() {
-    _incomingCallSub?.cancel();
-    _repo.dispose();
+  Future<void> dispose() async {
+    print('Disposing CallController');
+    await _incomingCallSub?.cancel();
+    await _repo.dispose();
     super.dispose();
   }
-}*/
+}

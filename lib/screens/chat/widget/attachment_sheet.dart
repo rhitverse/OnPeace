@@ -184,7 +184,6 @@ class _AttachmentSheetState extends ConsumerState<AttachmentSheet>
       final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}_$i';
       final fileSize = await file.length();
 
-      // Add to uploading messages for progress tracking
       uploadingNotifier.add(
         UploadingMessage(
           tempId: tempId,
@@ -195,7 +194,6 @@ class _AttachmentSheetState extends ConsumerState<AttachmentSheet>
         ),
       );
 
-      // Add to pending messages for instant UI display
       pendingNotifier.addPending(
         PendingMessage(
           tempId: tempId,
