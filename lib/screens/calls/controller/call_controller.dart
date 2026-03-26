@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:whatsapp_clone/common/utils/navigator_key.dart';
 import 'package:whatsapp_clone/models/call_state.dart';
 import 'package:whatsapp_clone/screens/calls/repository/call_repository.dart';
+import 'package:whatsapp_clone/screens/calls/screen/incoming_call_screen.dart';
 import 'package:whatsapp_clone/screens/calls/screen/calls_screen.dart';
 import 'package:whatsapp_clone/widgets/helpful_widgets/custom_messenger.dart';
 
@@ -21,7 +22,9 @@ final callControllerProvider = StateNotifierProvider<CallController, CallState>(
 class CallController extends StateNotifier<CallState> {
   final CallRepository _repo;
   StreamSubscription? _incomingCallSub;
-  bool _agoraInitialized = false;
+  bool _isStartingCall = false;
+  bool _isAcceptingCall = false;
+  bool _isIncomingUiOpen = false;
 
   CallController({required CallRepository repo, required Ref ref})
     : _repo = repo,
@@ -32,11 +35,9 @@ class CallController extends StateNotifier<CallState> {
   Future<void> _initializeAsync() async {
     try {
       await _initAgora();
-      _agoraInitialized = true;
       _listenIncomingCalls();
     } catch (e) {
       print('❌ Failed to initialize Agora: $e');
-      _agoraInitialized = false;
     }
   }
 
@@ -82,6 +83,21 @@ class CallController extends StateNotifier<CallState> {
         if (call != null) {
           print('Incoming call from: ${call.callerName}');
           state = state.copyWith(incomingCall: call);
+
+          if (!_isIncomingUiOpen) {
+            _isIncomingUiOpen = true;
+            navigatorKey.currentState?.push(
+              MaterialPageRoute(
+                settings: const RouteSettings(name: 'incoming-call-screen'),
+                builder: (_) => const IncomingCallScreen(),
+              ),
+            );
+          }
+        } else {
+          if (state.incomingCall != null) {
+            state = state.copyWith(clearIncomingCall: true);
+          }
+          _isIncomingUiOpen = false;
         }
       });
     });
@@ -92,6 +108,14 @@ class CallController extends StateNotifier<CallState> {
     required bool isVideo,
     required BuildContext context,
   }) async {
+    if (_isStartingCall) {
+      print(
+        'Ignoring duplicate startCall while previous request is in progress',
+      );
+      return;
+    }
+
+    _isStartingCall = true;
     try {
       print('Starting call to: $receiverId');
 
@@ -118,10 +142,20 @@ class CallController extends StateNotifier<CallState> {
         CustomMessenger.show(context, 'Error starting call: $e');
       }
       rethrow;
+    } finally {
+      _isStartingCall = false;
     }
   }
 
   Future<void> acceptCall(BuildContext context) async {
+    if (_isAcceptingCall) {
+      print(
+        'Ignoring duplicate acceptCall while previous request is in progress',
+      );
+      return;
+    }
+
+    _isAcceptingCall = true;
     try {
       if (state.incomingCall == null) {
         print('No incoming call to accept');
@@ -130,6 +164,11 @@ class CallController extends StateNotifier<CallState> {
 
       final call = state.incomingCall!;
       print('Accepting call from: ${call.callerName}');
+
+      if (_isIncomingUiOpen) {
+        navigatorKey.currentState?.pop();
+        _isIncomingUiOpen = false;
+      }
 
       state = state.copyWith(isVideoOn: call.isVideo, channelName: call.callId);
       await _repo.acceptCall(call);
@@ -152,6 +191,8 @@ class CallController extends StateNotifier<CallState> {
       if (context.mounted) {
         CustomMessenger.show(context, 'Error accepting call: $e');
       }
+    } finally {
+      _isAcceptingCall = false;
     }
   }
 
@@ -160,6 +201,10 @@ class CallController extends StateNotifier<CallState> {
       if (state.incomingCall == null) return;
       print('Call rejected');
       state = state.copyWith(clearIncomingCall: true);
+      if (_isIncomingUiOpen) {
+        navigatorKey.currentState?.pop();
+        _isIncomingUiOpen = false;
+      }
       CustomMessenger.show(context, 'Call rejected');
     } catch (e) {
       print('Error rejecting call: $e');
@@ -171,6 +216,7 @@ class CallController extends StateNotifier<CallState> {
       if (state.currentCallId.isEmpty) {
         print('No active call to end');
         state = state.copyWith(clearIncomingCall: true);
+        _isIncomingUiOpen = false;
         return;
       }
       print('Ending call: ${state.currentCallId}');

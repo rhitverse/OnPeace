@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:whatsapp_clone/models/call_model.dart';
 import 'package:whatsapp_clone/secret/secret.dart';
@@ -16,10 +17,24 @@ class CallRepository {
 
   late RtcEngine agoraEngine;
 
+  List<String> _tokenServerCandidates() {
+    // Keep Railway first for prod, then fast local fallbacks in debug.
+    final endpoints = <String>[
+      tokenServerUrl,
+      Secrets.tokenServerLocalDeviceLan,
+    ];
+    if (kDebugMode) {
+      endpoints.add(Secrets.tokenServerLocalEmulator);
+    }
+    return endpoints.toSet().toList();
+  }
+
   Future<String> getAgoraToken({
     required String channelName,
     required int uid,
   }) async {
+    Exception? lastError;
+
     try {
       print('Requesting token for channel: $channelName');
 
@@ -41,35 +56,52 @@ class CallRepository {
       print('Firebase token obtained: $tokenPreview...');
       print('Token length: ${firebaseToken.length}');
 
-      final response = await http
-          .post(
-            Uri.parse(tokenServerUrl),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'channelName': channelName,
-              'uid': uid,
-              'role': 'publisher',
-              'firebaseToken': firebaseToken,
-            }),
-          )
-          .timeout(
-            const Duration(seconds: 10),
-            onTimeout: () => throw TimeoutException(
-              'Timeout: Could not reach token server at $tokenServerUrl',
-            ),
+      for (final endpoint in _tokenServerCandidates()) {
+        try {
+          print('Trying token endpoint: $endpoint');
+          final response = await http
+              .post(
+                Uri.parse(endpoint),
+                headers: {'Content-Type': 'application/json'},
+                body: jsonEncode({
+                  'channelName': channelName,
+                  'uid': uid,
+                  'role': 'publisher',
+                  'firebaseToken': firebaseToken,
+                }),
+              )
+              .timeout(
+                const Duration(seconds: 6),
+                onTimeout: () => throw TimeoutException(
+                  'Timeout: Could not reach token server at $endpoint',
+                ),
+              );
+
+          print('Response Status: ${response.statusCode}');
+          if (response.statusCode == 200) {
+            final data = jsonDecode(response.body);
+            final token = data['token'];
+            if (token == null || token.toString().isEmpty) {
+              throw Exception('Empty token from endpoint: $endpoint');
+            }
+            print('Token received from: $endpoint');
+            return token.toString();
+          }
+
+          lastError = Exception(
+            'Failed token response (${response.statusCode}) from $endpoint: ${response.body}',
           );
-
-      print('Response Status: ${response.statusCode}');
-      print('Response Body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final token = data['token'];
-        print('Token received!');
-        return token;
-      } else {
-        throw Exception('Failed to get token: ${response.body}');
+          print(lastError);
+        } catch (e) {
+          lastError = Exception('Endpoint failed ($endpoint): $e');
+          print(lastError);
+        }
       }
+
+      throw lastError ??
+          Exception(
+            'All token endpoints failed. Make sure token server is running and phone/emulator can reach it.',
+          );
     } catch (e) {
       print('Error getting Agora token: $e');
       rethrow;
@@ -83,7 +115,7 @@ class CallRepository {
   }
 
   int _getUidFromUserId(String userId) {
-    return userId.hashCode.abs() % 4294967295;
+    return userId.hashCode.abs() % 2147483647;
   }
 
   Future<void> enableVideo(bool enable) async {
@@ -142,9 +174,7 @@ class CallRepository {
         channelName: call.callId,
         uid: uid,
       );
-      await _firestore.collection('calls').doc(call.callId).update({
-        'status': 'accepted',
-      });
+
       await agoraEngine.joinChannel(
         token: agoraToken,
         channelId: call.callId,
@@ -153,6 +183,11 @@ class CallRepository {
           clientRoleType: ClientRoleType.clientRoleBroadcaster,
         ),
       );
+
+      await _firestore.collection('calls').doc(call.callId).update({
+        'status': 'accepted',
+      });
+
       await enableVideo(call.isVideo);
       print('Call accepted - Channel: ${call.callId}');
     } catch (e) {
