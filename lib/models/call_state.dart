@@ -1,10 +1,12 @@
+import 'package:whatsapp_clone/models/call_model.dart';
+
 class CallState {
   final String currentCallId;
   final String? remoteUid;
   final bool isVideoOn;
   final bool isMuted;
   final bool isCallActive;
-  final dynamic incomingCall;
+  final CallModel? incomingCall;
   final String channelName;
 
   const CallState({
@@ -23,7 +25,7 @@ class CallState {
     bool? isVideoOn,
     bool? isMuted,
     bool? isCallActive,
-    dynamic incomingCall,
+    CallModel? incomingCall,
     String? channelName,
     bool clearRemoteUid = false,
     bool clearIncomingCall = false,

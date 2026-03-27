@@ -60,7 +60,6 @@ dependencies:
   file_picker: ^10.3.10
   video_player: ^2.11.0
   video_thumbnail: ^0.5.6
-  agora_rtc_engine: ^6.5.3
   uuid: ^4.5.3
   syncfusion_flutter_pdfviewer: ^32.2.9
   dio: ^5.9.2
@@ -76,6 +75,7 @@ dependencies:
   go_router: ^17.1.0
   shared_preferences: ^2.5.4
   image_cropper: ^11.0.0
+  zego_express_engine: ^3.19.0
 
 dev_dependencies:
   flutter_test:

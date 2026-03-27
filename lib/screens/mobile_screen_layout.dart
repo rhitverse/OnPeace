@@ -4,8 +4,6 @@ import 'package:whatsapp_clone/colors.dart';
 import 'package:whatsapp_clone/core/providers/unread_count_provider.dart';
 import 'package:whatsapp_clone/screens/Notifications/notification_screen.dart';
 import 'package:whatsapp_clone/screens/calls/screen/call_details_screen.dart';
-import 'package:whatsapp_clone/screens/calls/screen/incoming_call_screen.dart';
-import 'package:whatsapp_clone/screens/calls/controller/call_controller.dart';
 import 'package:whatsapp_clone/screens/chat/Screens/chats_control.dart';
 import 'package:whatsapp_clone/screens/diary/screen/diary_screen.dart';
 import 'package:whatsapp_clone/screens/friends/friends_newchat.dart';
@@ -131,7 +129,6 @@ class _MobileScreenLayoutState extends ConsumerState<MobileScreenLayout> {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    final callState = ref.watch(callControllerProvider);
 
     return Stack(
       children: [
@@ -291,7 +288,6 @@ class _MobileScreenLayoutState extends ConsumerState<MobileScreenLayout> {
             },
           ),
         ),
-        if (callState.incomingCall != null) const IncomingCallScreen(),
       ],
     );
   }

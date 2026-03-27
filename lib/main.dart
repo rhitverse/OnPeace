@@ -7,6 +7,8 @@ import 'package:whatsapp_clone/core/providers/theme_provider.dart';
 import 'package:whatsapp_clone/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:whatsapp_clone/features/app/splash/splash_screen.dart';
+import 'package:whatsapp_clone/screens/calls/screen/incoming_call_overlay.dart';
+import 'package:whatsapp_clone/screens/calls/service/zego_engine_service.dart';
 
 void main() {
   runZonedGuarded(
@@ -15,6 +17,9 @@ void main() {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
+
+      await ZegoEngineService().initializeZego();
+
       runApp(const ProviderScope(child: MyApp()));
     },
     (error, stack) {
@@ -35,6 +40,10 @@ class MyApp extends ConsumerWidget {
       title: 'Whatsapp Clone',
       navigatorKey: navigatorKey,
       themeMode: themeMode,
+      builder: (context, child) {
+        if (child == null) return const SizedBox.shrink();
+        return IncomingCallOverlay(child: child);
+      },
       theme: ThemeData.light().copyWith(
         scaffoldBackgroundColor: Colors.white,
         appBarTheme: const AppBarTheme(
