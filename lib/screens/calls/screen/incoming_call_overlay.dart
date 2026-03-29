@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:whatsapp_clone/screens/calls/controller/call_provider.dart';
+import 'package:on_peace/screens/calls/controller/call_provider.dart';
 
 class IncomingCallOverlay extends ConsumerWidget {
   final Widget child;

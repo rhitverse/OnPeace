@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/core/providers/theme_provider.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/core/providers/theme_provider.dart';
 
 class ThemeScreen extends ConsumerStatefulWidget {
   const ThemeScreen({super.key, required this.initialIsDarkTheme});

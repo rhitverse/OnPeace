@@ -3,10 +3,10 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/models/diary_model.dart';
-import 'package:whatsapp_clone/screens/chat/widget/full_screen_image.dart';
-import 'package:whatsapp_clone/screens/chat/widget/video_player_screen.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/models/diary_model.dart';
+import 'package:on_peace/screens/chat/widget/full_screen_image.dart';
+import 'package:on_peace/screens/chat/widget/video_player_screen.dart';
 import 'package:video_player/video_player.dart';
 
 class DiaryDetailScreen extends StatefulWidget {

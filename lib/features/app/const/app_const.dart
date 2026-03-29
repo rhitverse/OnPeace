@@ -1,5 +1,5 @@
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:whatsapp_clone/colors.dart';
+import 'package:on_peace/colors.dart';
 
 void toast(String message) {
   Fluttertoast.showToast(

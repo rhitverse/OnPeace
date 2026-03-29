@@ -4,9 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:video_player/video_player.dart';
 import 'dart:io';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/screens/chat/provider/chat_provider.dart';
-import 'package:whatsapp_clone/screens/chat/provider/pending_messages_provider.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/screens/chat/provider/chat_provider.dart';
+import 'package:on_peace/screens/chat/provider/pending_messages_provider.dart';
 
 class AttachmentSendScreen extends ConsumerStatefulWidget {
   final String chatId;

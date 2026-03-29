@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/screens/friends/user_search.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/screens/friends/user_search.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:whatsapp_clone/screens/mobile_chat_screen.dart';
+import 'package:on_peace/screens/mobile_chat_screen.dart';
 
 class FriendsNewchat extends StatefulWidget {
   const FriendsNewchat({super.key});

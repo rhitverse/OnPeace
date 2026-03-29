@@ -2,11 +2,11 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:whatsapp_clone/common/utils/navigator_key.dart';
-import 'package:whatsapp_clone/models/call_model.dart';
-import 'package:whatsapp_clone/models/call_state.dart';
-import 'package:whatsapp_clone/screens/calls/repository/call_repository.dart';
-import 'package:whatsapp_clone/screens/calls/screen/calls_screen.dart';
+import 'package:on_peace/common/utils/navigator_key.dart';
+import 'package:on_peace/models/call_model.dart';
+import 'package:on_peace/models/call_state.dart';
+import 'package:on_peace/screens/calls/repository/call_repository.dart';
+import 'package:on_peace/screens/calls/screen/calls_screen.dart';
 
 class CallController extends StateNotifier<CallState> {
   final CallRepository _repo;

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:whatsapp_clone/colors.dart';
+import 'package:on_peace/colors.dart';
 
 class CustomBottomNavBar extends StatelessWidget {
   final int currentIndex;

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/features/auth/repository/auth_providers.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/features/auth/repository/auth_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class OtpPage extends ConsumerStatefulWidget {

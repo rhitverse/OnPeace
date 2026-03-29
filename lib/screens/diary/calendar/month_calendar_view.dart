@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:whatsapp_clone/colors.dart';
+import 'package:on_peace/colors.dart';
 
 class MonthCalendarView extends StatefulWidget {
   final DateTime selectedDate;

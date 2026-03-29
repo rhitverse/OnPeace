@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/widgets/helpful_widgets/channel_log_press_sheet.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/widgets/helpful_widgets/channel_log_press_sheet.dart';
 
 class ServerListScreen extends StatefulWidget {
   final List<Map<String, dynamic>> servers;

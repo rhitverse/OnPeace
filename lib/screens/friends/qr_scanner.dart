@@ -1,9 +1,9 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/screens/friends/my_qr_code_tab.dart';
-import 'package:whatsapp_clone/screens/friends/scan_qr_tab.dart';
-import 'package:whatsapp_clone/screens/friends/qr_bottom_nav.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/screens/friends/my_qr_code_tab.dart';
+import 'package:on_peace/screens/friends/scan_qr_tab.dart';
+import 'package:on_peace/screens/friends/qr_bottom_nav.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
 import 'package:photo_manager/photo_manager.dart';

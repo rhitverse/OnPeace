@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:whatsapp_clone/secret/secret.dart';
+import 'package:on_peace/secret/secret.dart';
 import 'package:zego_express_engine/zego_express_engine.dart';
 
 class ZegoEngineService {

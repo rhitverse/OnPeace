@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:whatsapp_clone/colors.dart';
+import 'package:on_peace/colors.dart';
 
 class CreatePollScreen extends StatefulWidget {
   final String chatId;

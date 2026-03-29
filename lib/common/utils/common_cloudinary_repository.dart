@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
-import 'package:whatsapp_clone/secret/secret.dart';
+import 'package:on_peace/secret/secret.dart';
 import 'package:crypto/crypto.dart';
 
 final commonCloudinaryRepositoryProvider = Provider(

@@ -2,8 +2,8 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/screens/chat/widget/camera_ui.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/screens/chat/widget/camera_ui.dart';
 
 Future<List<File>> showDiaryAttachmentSheet(BuildContext context) async {
   final result = await showModalBottomSheet<List<File>>(

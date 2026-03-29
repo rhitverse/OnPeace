@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/widgets/helpful_widgets/info_popup.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/widgets/helpful_widgets/info_popup.dart';
 
 class EmailVerificationDialog extends StatefulWidget {
   final String email;

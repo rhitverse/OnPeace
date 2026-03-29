@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:whatsapp_clone/common/encryption/encryption_service.dart';
+import 'package:on_peace/common/encryption/encryption_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'package:whatsapp_clone/common/utils/common_cloudinary_repository.dart';
+import 'package:on_peace/common/utils/common_cloudinary_repository.dart';
 
 class ChatRepository {
   final FirebaseFirestore _firestore;

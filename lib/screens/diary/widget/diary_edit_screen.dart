@@ -5,12 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:video_player/video_player.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/models/diary_model.dart';
-import 'package:whatsapp_clone/screens/chat/widget/video_player_screen.dart';
-import 'package:whatsapp_clone/screens/diary/controller/diary_controller.dart';
-import 'package:whatsapp_clone/screens/diary/widget/diary_attachment_sheet.dart';
-import 'package:whatsapp_clone/widgets/helpful_widgets/custom_messenger.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/models/diary_model.dart';
+import 'package:on_peace/screens/chat/widget/video_player_screen.dart';
+import 'package:on_peace/screens/diary/controller/diary_controller.dart';
+import 'package:on_peace/screens/diary/widget/diary_attachment_sheet.dart';
+import 'package:on_peace/widgets/helpful_widgets/custom_messenger.dart';
 
 class DiaryEditScreen extends StatefulWidget {
   final DiaryModel entry;

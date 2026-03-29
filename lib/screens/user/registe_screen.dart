@@ -5,15 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_holo_date_picker/flutter_holo_date_picker.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/features/app/welcome/welcome_page.dart';
-import 'package:whatsapp_clone/features/auth/controller/auth_controller.dart';
-import 'package:whatsapp_clone/screens/user/display_name.dart';
-import 'package:whatsapp_clone/widgets/helpful_widgets/app_loader.dart';
-import 'package:whatsapp_clone/widgets/helpful_widgets/email_verfication_dialog.dart';
-import 'package:whatsapp_clone/widgets/helpful_widgets/info_popup.dart';
-import 'package:whatsapp_clone/widgets/helpful_widgets/input_field.dart';
-import 'package:whatsapp_clone/widgets/helpful_widgets/password.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/features/app/welcome/welcome_page.dart';
+import 'package:on_peace/features/auth/controller/auth_controller.dart';
+import 'package:on_peace/screens/user/display_name.dart';
+import 'package:on_peace/widgets/helpful_widgets/app_loader.dart';
+import 'package:on_peace/widgets/helpful_widgets/email_verfication_dialog.dart';
+import 'package:on_peace/widgets/helpful_widgets/info_popup.dart';
+import 'package:on_peace/widgets/helpful_widgets/input_field.dart';
+import 'package:on_peace/widgets/helpful_widgets/password.dart';
 
 class RegisteScreen extends ConsumerStatefulWidget {
   const RegisteScreen({super.key});

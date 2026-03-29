@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/screens/chat/widget/bubble_tail_painter.dart';
-import 'package:whatsapp_clone/screens/chat/widget/link_preview_card.dart';
-import 'package:whatsapp_clone/screens/chat/widget/media_message_bubble.dart';
-import 'package:whatsapp_clone/screens/chat/widget/message_helper.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/screens/chat/widget/bubble_tail_painter.dart';
+import 'package:on_peace/screens/chat/widget/link_preview_card.dart';
+import 'package:on_peace/screens/chat/widget/media_message_bubble.dart';
+import 'package:on_peace/screens/chat/widget/message_helper.dart';
 
 class SenderMessage extends StatelessWidget {
   final String text;

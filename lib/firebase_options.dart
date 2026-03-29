@@ -63,6 +63,6 @@ class DefaultFirebaseOptions {
     messagingSenderId: '1022968286790',
     projectId: 'minechat-backend',
     storageBucket: 'minechat-backend.firebasestorage.app',
-    iosBundleId: 'com.example.whatsappClone',
+    iosBundleId: 'com.example.onpeace',
   );
 }

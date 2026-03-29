@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:whatsapp_clone/screens/friends/repository/friend_repository.dart';
+import 'package:on_peace/screens/friends/repository/friend_repository.dart';
 
 final friendRepositoryProvider = Provider<FriendRepository>((ref) {
   return FriendRepository(firestore: FirebaseFirestore.instance);

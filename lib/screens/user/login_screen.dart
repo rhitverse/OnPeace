@@ -1,13 +1,13 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/features/auth/controller/auth_controller.dart';
-import 'package:whatsapp_clone/features/auth/repository/auth_providers.dart';
-import 'package:whatsapp_clone/screens/user/registe_screen.dart';
-import 'package:whatsapp_clone/widgets/helpful_widgets/input_field.dart';
-import 'package:whatsapp_clone/common/utils/utils.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/features/auth/controller/auth_controller.dart';
+import 'package:on_peace/features/auth/repository/auth_providers.dart';
+import 'package:on_peace/screens/user/registe_screen.dart';
+import 'package:on_peace/widgets/helpful_widgets/input_field.dart';
+import 'package:on_peace/common/utils/utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:whatsapp_clone/widgets/helpful_widgets/info_popup.dart';
+import 'package:on_peace/widgets/helpful_widgets/info_popup.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   final VoidCallback onClose;

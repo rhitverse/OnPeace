@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/screens/diary/calendar/month_calendar_view.dart';
-import 'package:whatsapp_clone/screens/diary/calendar/page_flip_calendar.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/screens/diary/calendar/month_calendar_view.dart';
+import 'package:on_peace/screens/diary/calendar/page_flip_calendar.dart';
 
 class CalendarScreen extends StatefulWidget {
   final List<DateTime> diaryDates;

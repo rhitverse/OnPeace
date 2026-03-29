@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:whatsapp_clone/colors.dart';
+import 'package:on_peace/colors.dart';
 
 class CreateServerScreen extends StatefulWidget {
   const CreateServerScreen({super.key});
-
   @override
   State<CreateServerScreen> createState() => _CreateServerScreenState();
 }
 
 class _CreateServerScreenState extends State<CreateServerScreen> {
-  // ✅ Controller alag field ke roop mein
   final TextEditingController _serverNameController = TextEditingController(
     text: "mobbin's server",
   );
@@ -20,7 +18,6 @@ class _CreateServerScreenState extends State<CreateServerScreen> {
     super.dispose();
   }
 
-  // ✅ Method ka naam alag kiya
   void _showCreateServerDialog(BuildContext context) {
     TextEditingController dialogController = TextEditingController();
     showDialog(
@@ -32,7 +29,7 @@ class _CreateServerScreenState extends State<CreateServerScreen> {
           style: TextStyle(color: whiteColor, fontWeight: FontWeight.bold),
         ),
         content: TextField(
-          controller: dialogController, // ✅ dialog ka apna controller
+          controller: dialogController,
           style: const TextStyle(color: whiteColor),
           decoration: InputDecoration(
             hintText: 'Enter server name',
@@ -55,7 +52,6 @@ class _CreateServerScreenState extends State<CreateServerScreen> {
           TextButton(
             onPressed: () {
               if (dialogController.text.isNotEmpty) {
-                // ✅ dialogController
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -233,7 +229,7 @@ class _CreateServerScreenState extends State<CreateServerScreen> {
                       text: "By creating a server, you agree to MineChat",
                     ),
                     TextSpan(
-                      text: 'Community Guidelines.',
+                      text: ' Community Guidelines.',
                       style: TextStyle(color: uiColor),
                     ),
                   ],

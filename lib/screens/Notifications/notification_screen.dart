@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:whatsapp_clone/colors.dart';
+import 'package:on_peace/colors.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:whatsapp_clone/common/utils/time_utils.dart';
-import 'package:whatsapp_clone/screens/Notifications/controller/notification_controller.dart';
+import 'package:on_peace/common/utils/time_utils.dart';
+import 'package:on_peace/screens/Notifications/controller/notification_controller.dart';
 
 class NotificaionScreen extends ConsumerWidget {
   const NotificaionScreen({super.key});

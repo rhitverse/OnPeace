@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:image_cropper/image_cropper.dart';
-import 'package:whatsapp_clone/colors.dart';
+import 'package:on_peace/colors.dart';
 
 class ImageCropHelper {
   static Future<File?> cropProfilePic(File file) async {

@@ -3,14 +3,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/screens/chat/provider/chat_provider.dart';
-import 'package:whatsapp_clone/screens/chat/widget/attachment_send_screen.dart';
-import 'package:whatsapp_clone/screens/chat/widget/attachment_sheet.dart';
-import 'package:whatsapp_clone/screens/chat/widget/custom_emoji_picker.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/screens/chat/provider/chat_provider.dart';
+import 'package:on_peace/screens/chat/widget/attachment_send_screen.dart';
+import 'package:on_peace/screens/chat/widget/attachment_sheet.dart';
+import 'package:on_peace/screens/chat/widget/custom_emoji_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:whatsapp_clone/screens/chat/widget/voice_recorder_field.dart';
-import 'package:whatsapp_clone/screens/chat/widget/create_poll_screen.dart';
+import 'package:on_peace/screens/chat/widget/voice_recorder_field.dart';
+import 'package:on_peace/screens/chat/widget/create_poll_screen.dart';
 
 enum ChatInputMode { none, attachment, recording }
 

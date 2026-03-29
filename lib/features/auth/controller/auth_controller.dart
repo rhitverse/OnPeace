@@ -1,11 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:whatsapp_clone/common/enum/username_result.dart';
-import 'package:whatsapp_clone/features/auth/repository/auth_repository.dart';
-import 'package:whatsapp_clone/features/auth/repository/auth_providers.dart';
+import 'package:on_peace/common/enum/username_result.dart';
+import 'package:on_peace/features/auth/repository/auth_repository.dart';
+import 'package:on_peace/features/auth/repository/auth_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:whatsapp_clone/screens/user/display_name.dart';
-import 'package:whatsapp_clone/widgets/helpful_widgets/info_popup.dart';
+import 'package:on_peace/screens/user/display_name.dart';
+import 'package:on_peace/widgets/helpful_widgets/info_popup.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 final authControllerProvider = Provider(

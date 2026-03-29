@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as html_parser;
-import 'package:whatsapp_clone/colors.dart';
+import 'package:on_peace/colors.dart';
 import 'dart:ui' as ui;
 
 class LinkPreviewCard extends StatefulWidget {

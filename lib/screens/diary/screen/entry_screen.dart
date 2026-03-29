@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:provider/provider.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/models/diary_model.dart';
-import 'package:whatsapp_clone/screens/diary/controller/diary_controller.dart';
-import 'package:whatsapp_clone/screens/diary/widget/diary_details_screen.dart';
-import 'package:whatsapp_clone/screens/diary/widget/diary_edit_screen.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/models/diary_model.dart';
+import 'package:on_peace/screens/diary/controller/diary_controller.dart';
+import 'package:on_peace/screens/diary/widget/diary_details_screen.dart';
+import 'package:on_peace/screens/diary/widget/diary_edit_screen.dart';
 
 class EntryScreen extends StatefulWidget {
   const EntryScreen({super.key});

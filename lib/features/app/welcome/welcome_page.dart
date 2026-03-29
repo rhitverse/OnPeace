@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/screens/user/login_screen.dart';
-import 'package:whatsapp_clone/screens/user/registe_screen.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/screens/user/login_screen.dart';
+import 'package:on_peace/screens/user/registe_screen.dart';
 
 class WelcomePage extends StatefulWidget {
   const WelcomePage({super.key});

@@ -16,7 +16,7 @@
 
 
     <application
-        android:label="whatsapp_clone"
+        android:label="OnPeace"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 

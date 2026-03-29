@@ -1,4 +1,4 @@
-import 'package:whatsapp_clone/common/enum/messaga_enum.dart';
+import 'package:on_peace/common/enum/messaga_enum.dart';
 
 class Message {
   final String senderId;

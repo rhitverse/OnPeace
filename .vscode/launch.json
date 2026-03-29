@@ -6,18 +6,18 @@
     "configurations": [
     
         {
-            "name": "whatsapp_clone",
+            "name": "on_peace",
             "request": "launch",
             "type": "dart",
         },
         {
-            "name": "whatsapp_clone (profile mode)",
+            "name": "on_peace (profile mode)",
             "request": "launch",
             "type": "dart",
             "flutterMode": "profile"
         },
         {
-            "name": "whatsapp_clone (release mode)",
+            "name": "on_peace (release mode)",
             "request": "launch",
             "type": "dart",
             "flutterMode": "release"

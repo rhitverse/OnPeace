@@ -7,9 +7,9 @@ import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/screens/chat/widget/full_screen_image.dart';
-import 'package:whatsapp_clone/screens/chat/widget/video_player_screen.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/screens/chat/widget/full_screen_image.dart';
+import 'package:on_peace/screens/chat/widget/video_player_screen.dart';
 
 class MediaMessageBubble extends StatefulWidget {
   final String mediaUrl;

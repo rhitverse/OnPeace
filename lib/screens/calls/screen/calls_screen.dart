@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:whatsapp_clone/models/call_model.dart';
-import 'package:whatsapp_clone/screens/calls/controller/call_provider.dart';
-import 'package:whatsapp_clone/screens/calls/service/zego_engine_service.dart';
+import 'package:on_peace/models/call_model.dart';
+import 'package:on_peace/screens/calls/controller/call_provider.dart';
+import 'package:on_peace/screens/calls/service/zego_engine_service.dart';
 import 'package:zego_express_engine/zego_express_engine.dart';
 
 class CallsScreen extends ConsumerStatefulWidget {

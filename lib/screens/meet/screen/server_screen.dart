@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:whatsapp_clone/screens/meet/screen/empty_server_screen.dart';
-import 'package:whatsapp_clone/screens/meet/screen/server_list_screen.dart';
+import 'package:on_peace/screens/meet/screen/empty_server_screen.dart';
+import 'package:on_peace/screens/meet/screen/server_list_screen.dart';
 
 class ServerScreen extends StatefulWidget {
   const ServerScreen({super.key});

@@ -1,7 +1,7 @@
 /*import 'package:go_router/go_router.dart';
-import 'package:whatsapp_clone/features/app/splash/splash_screen.dart';
-import 'package:whatsapp_clone/screens/calls/screen/calls_screen.dart';
-import 'package:whatsapp_clone/screens/calls/screen/incoming_call_screen.dart';
+import 'package:on_peace/features/app/splash/splash_screen.dart';
+import 'package:on_peace/screens/calls/screen/calls_screen.dart';
+import 'package:on_peace/screens/calls/screen/incoming_call_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',

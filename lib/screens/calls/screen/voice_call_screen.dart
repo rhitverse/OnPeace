@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/screens/calls/service/zego_engine_service.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/screens/calls/service/zego_engine_service.dart';
 
 class VoiceCallScreen extends StatefulWidget {
   final String remoteUserId;

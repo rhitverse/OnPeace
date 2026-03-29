@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:whatsapp_clone/models/diary_model.dart';
-import 'package:whatsapp_clone/screens/diary/repository/diary_repository.dart';
+import 'package:on_peace/models/diary_model.dart';
+import 'package:on_peace/screens/diary/repository/diary_repository.dart';
 
 class DiaryController extends ChangeNotifier {
   final DiaryRepository _repo = DiaryRepository();

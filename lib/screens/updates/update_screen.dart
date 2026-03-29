@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/screens/updates/story_list.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/screens/updates/story_list.dart';
 
 class UpdateScreen extends StatelessWidget {
   const UpdateScreen({super.key});

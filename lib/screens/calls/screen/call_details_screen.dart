@@ -2,9 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/models/call_model.dart';
-import 'package:whatsapp_clone/screens/calls/controller/call_provider.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/models/call_model.dart';
+import 'package:on_peace/screens/calls/controller/call_provider.dart';
 
 class CallDetailsScreen extends ConsumerWidget {
   const CallDetailsScreen({super.key});

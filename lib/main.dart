@@ -1,14 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/common/utils/navigator_key.dart';
-import 'package:whatsapp_clone/core/providers/theme_provider.dart';
-import 'package:whatsapp_clone/firebase_options.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/common/utils/navigator_key.dart';
+import 'package:on_peace/core/providers/theme_provider.dart';
+import 'package:on_peace/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:whatsapp_clone/features/app/splash/splash_screen.dart';
-import 'package:whatsapp_clone/screens/calls/screen/incoming_call_overlay.dart';
-import 'package:whatsapp_clone/screens/calls/service/zego_engine_service.dart';
+import 'package:on_peace/features/app/splash/splash_screen.dart';
+import 'package:on_peace/screens/calls/screen/incoming_call_overlay.dart';
+import 'package:on_peace/screens/calls/service/zego_engine_service.dart';
 
 void main() {
   runZonedGuarded(
@@ -37,7 +37,7 @@ class MyApp extends ConsumerWidget {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Whatsapp Clone',
+      title: 'OnPeace',
       navigatorKey: navigatorKey,
       themeMode: themeMode,
       builder: (context, child) {

@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:whatsapp_clone/models/poll_model.dart';
+import 'package:on_peace/models/poll_model.dart';
 
 final activePollProvider =
     StateNotifierProvider<ActivePollNotifier, Map<String, Poll>>(

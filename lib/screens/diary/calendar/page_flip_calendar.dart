@@ -1,7 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
-import 'package:whatsapp_clone/screens/diary/calendar/page_flip_painter.dart';
+import 'package:on_peace/screens/diary/calendar/page_flip_painter.dart';
 
 class _PageFlipRecognizer extends OneSequenceGestureRecognizer {
   void Function(PointerDownEvent)? onDown;

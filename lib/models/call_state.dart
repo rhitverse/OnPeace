@@ -1,4 +1,4 @@
-import 'package:whatsapp_clone/models/call_model.dart';
+import 'package:on_peace/models/call_model.dart';
 
 class CallState {
   final String currentCallId;

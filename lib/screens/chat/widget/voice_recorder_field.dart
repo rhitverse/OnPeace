@@ -5,8 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/screens/chat/provider/chat_provider.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/screens/chat/provider/chat_provider.dart';
 
 class VoiceRecorderField extends ConsumerStatefulWidget {
   final String chatId;

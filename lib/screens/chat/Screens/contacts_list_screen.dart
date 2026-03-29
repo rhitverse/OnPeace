@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/common/utils/time_utils.dart';
-import 'package:whatsapp_clone/models/chat_contact.dart';
-import 'package:whatsapp_clone/screens/mobile_chat_screen.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/common/utils/time_utils.dart';
+import 'package:on_peace/models/chat_contact.dart';
+import 'package:on_peace/screens/mobile_chat_screen.dart';
 
 class ContactsListScreen extends StatelessWidget {
   final List<ChatContact> contacts;

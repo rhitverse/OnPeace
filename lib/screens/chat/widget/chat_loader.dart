@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/screens/chat/widget/bubble_tail_painter.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/screens/chat/widget/bubble_tail_painter.dart';
 
 class ChatLoader extends StatefulWidget {
   const ChatLoader({super.key});

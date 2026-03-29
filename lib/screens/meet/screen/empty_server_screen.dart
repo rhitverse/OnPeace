@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/screens/meet/screen/create_server_screen.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/screens/meet/screen/create_server_screen.dart';
 
 class EmptyServerScreen extends StatefulWidget {
   final List<Map<String, dynamic>> servers;

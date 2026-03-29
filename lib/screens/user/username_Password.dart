@@ -1,7 +1,7 @@
 /*
 import 'package:flutter/material.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/screens/user/aga_screen.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/screens/user/aga_screen.dart';
 
 class UsernamePassword extends StatefulWidget {
   const UsernamePassword({super.key});

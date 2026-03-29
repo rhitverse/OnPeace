@@ -2,12 +2,12 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/screens/chat/controller/chat_controller.dart';
-import 'package:whatsapp_clone/screens/chat/provider/chat_provider.dart';
-import 'package:whatsapp_clone/screens/chat/provider/uploading_messages_provider.dart';
-import 'package:whatsapp_clone/screens/chat/provider/pending_messages_provider.dart';
-import 'package:whatsapp_clone/screens/chat/widget/camera_ui.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/screens/chat/controller/chat_controller.dart';
+import 'package:on_peace/screens/chat/provider/chat_provider.dart';
+import 'package:on_peace/screens/chat/provider/uploading_messages_provider.dart';
+import 'package:on_peace/screens/chat/provider/pending_messages_provider.dart';
+import 'package:on_peace/screens/chat/widget/camera_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 void showAttachmentSheet(

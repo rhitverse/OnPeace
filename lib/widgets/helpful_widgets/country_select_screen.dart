@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:country_picker/country_picker.dart';
-import 'package:whatsapp_clone/colors.dart';
+import 'package:on_peace/colors.dart';
 
 class CountrySelectScreen extends StatelessWidget {
   const CountrySelectScreen({super.key});

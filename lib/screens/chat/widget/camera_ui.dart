@@ -5,9 +5,9 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:screen_brightness/screen_brightness.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/screens/chat/widget/camera_bottom_bar.dart';
-import 'package:whatsapp_clone/screens/chat/widget/filter.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/screens/chat/widget/camera_bottom_bar.dart';
+import 'package:on_peace/screens/chat/widget/filter.dart';
 
 class CameraUi extends StatefulWidget {
   const CameraUi({super.key});

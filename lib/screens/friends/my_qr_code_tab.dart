@@ -6,13 +6,13 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:flutter/services.dart';
-import 'package:whatsapp_clone/colors.dart';
+import 'package:on_peace/colors.dart';
 import 'package:vision_gallery_saver/vision_gallery_saver.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:whatsapp_clone/models/user_model.dart';
-import 'package:whatsapp_clone/widgets/helpful_widgets/custom_messenger.dart';
-import 'package:whatsapp_clone/widgets/helpful_widgets/regenerate_dialog.dart';
+import 'package:on_peace/models/user_model.dart';
+import 'package:on_peace/widgets/helpful_widgets/custom_messenger.dart';
+import 'package:on_peace/widgets/helpful_widgets/regenerate_dialog.dart';
 
 class MyQrCodeTab extends StatefulWidget {
   const MyQrCodeTab({super.key});

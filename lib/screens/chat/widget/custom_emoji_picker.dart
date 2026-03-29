@@ -5,8 +5,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/secret/secret.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/secret/secret.dart';
 
 class GifItem {
   final String id;

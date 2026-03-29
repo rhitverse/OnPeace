@@ -3,15 +3,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:whatsapp_clone/common/encryption/encryption_service.dart';
-import 'package:whatsapp_clone/common/enum/username_result.dart';
-import 'package:whatsapp_clone/common/utils/common_cloudinary_repository.dart';
-import 'package:whatsapp_clone/common/utils/utils.dart';
-import 'package:whatsapp_clone/features/auth/otp_page.dart';
-import 'package:whatsapp_clone/models/user_model.dart';
-import 'package:whatsapp_clone/screens/mobile_screen_layout.dart';
-import 'package:whatsapp_clone/screens/user/display_name.dart';
-import 'package:whatsapp_clone/widgets/helpful_widgets/info_popup.dart';
+import 'package:on_peace/common/encryption/encryption_service.dart';
+import 'package:on_peace/common/enum/username_result.dart';
+import 'package:on_peace/common/utils/common_cloudinary_repository.dart';
+import 'package:on_peace/common/utils/utils.dart';
+import 'package:on_peace/features/auth/otp_page.dart';
+import 'package:on_peace/models/user_model.dart';
+import 'package:on_peace/screens/mobile_screen_layout.dart';
+import 'package:on_peace/screens/user/display_name.dart';
+import 'package:on_peace/widgets/helpful_widgets/info_popup.dart';
 
 class AuthRepository {
   final FirebaseAuth _auth;

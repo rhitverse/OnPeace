@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:1022968286790:android:818c0ca0b82e6ad1364447",
         "android_client_info": {
-          "package_name": "com.example.whatsapp_clone"
+          "package_name": "com.example.onpeace"
         }
       },
       "oauth_client": [
@@ -17,7 +17,7 @@
           "client_id": "1022968286790-fhig32nnp8ar5trtvp9epue1hfclhkov.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.example.whatsapp_clone",
+            "package_name": "com.example.onpeace",
             "certificate_hash": "bdf62788d977a5cf57a8f74655d8893f9307f587"
           }
         },
@@ -42,7 +42,7 @@
               "client_id": "1022968286790-tnogtqj68uv2rcgb21k4snb8kqp3j279.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.example.whatsappClone"
+                "bundle_id": "com.example.onpeace"
               }
             }
           ]

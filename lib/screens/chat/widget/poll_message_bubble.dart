@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/models/poll_model.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/models/poll_model.dart';
 
 class PollMessageBubble extends StatelessWidget {
   final Poll poll;

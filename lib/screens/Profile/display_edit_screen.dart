@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/features/auth/controller/auth_controller.dart';
-import 'package:whatsapp_clone/features/auth/repository/auth_providers.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/features/auth/controller/auth_controller.dart';
+import 'package:on_peace/features/auth/repository/auth_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:whatsapp_clone/widgets/helpful_widgets/info_popup.dart';
+import 'package:on_peace/widgets/helpful_widgets/info_popup.dart';
 
 class DisplayEditScreen extends ConsumerStatefulWidget {
   const DisplayEditScreen({super.key});

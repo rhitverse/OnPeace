@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:whatsapp_clone/common/encryption/encryption_service.dart';
-import 'package:whatsapp_clone/models/chat_contact.dart';
-import 'package:whatsapp_clone/screens/chat/Screens/contacts_list_screen.dart';
-import 'package:whatsapp_clone/screens/chat/Screens/empty_contacts_screen.dart';
-import 'package:whatsapp_clone/screens/chat/widget/chat_list_loader.dart';
+import 'package:on_peace/common/encryption/encryption_service.dart';
+import 'package:on_peace/models/chat_contact.dart';
+import 'package:on_peace/screens/chat/Screens/contacts_list_screen.dart';
+import 'package:on_peace/screens/chat/Screens/empty_contacts_screen.dart';
+import 'package:on_peace/screens/chat/widget/chat_list_loader.dart';
 
 class ChatControl extends ConsumerWidget {
   final String userId;

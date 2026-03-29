@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:whatsapp_clone/models/call_model.dart';
-import 'package:whatsapp_clone/screens/calls/service/zego_engine_service.dart';
+import 'package:on_peace/models/call_model.dart';
+import 'package:on_peace/screens/calls/service/zego_engine_service.dart';
 
 class CallRepository {
   final FirebaseFirestore _firestore;

@@ -1,13 +1,13 @@
 import 'dart:io';
-import 'package:whatsapp_clone/common/utils/utils.dart';
+import 'package:on_peace/common/utils/utils.dart';
 import 'package:flutter/material.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/features/auth/controller/auth_controller.dart';
-import 'package:whatsapp_clone/screens/mobile_screen_layout.dart';
-import 'package:whatsapp_clone/widgets/helpful_widgets/app_loader.dart';
-import 'package:whatsapp_clone/widgets/helpful_widgets/info_popup.dart';
-import 'package:whatsapp_clone/widgets/helpful_widgets/input_field.dart';
-import 'package:whatsapp_clone/widgets/helpful_widgets/profilepic.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/features/auth/controller/auth_controller.dart';
+import 'package:on_peace/screens/mobile_screen_layout.dart';
+import 'package:on_peace/widgets/helpful_widgets/app_loader.dart';
+import 'package:on_peace/widgets/helpful_widgets/info_popup.dart';
+import 'package:on_peace/widgets/helpful_widgets/input_field.dart';
+import 'package:on_peace/widgets/helpful_widgets/profilepic.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class DisplayName extends ConsumerStatefulWidget {

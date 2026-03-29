@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/screens/diary/controller/diary_controller.dart';
-import 'package:whatsapp_clone/screens/diary/calendar/calendar_screen.dart';
-import 'package:whatsapp_clone/screens/diary/screen/entry_screen.dart';
-import 'package:whatsapp_clone/screens/diary/screen/diary_tab_screen.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/screens/diary/controller/diary_controller.dart';
+import 'package:on_peace/screens/diary/calendar/calendar_screen.dart';
+import 'package:on_peace/screens/diary/screen/entry_screen.dart';
+import 'package:on_peace/screens/diary/screen/diary_tab_screen.dart';
 
 class DiaryScreen extends StatefulWidget {
   const DiaryScreen({super.key});

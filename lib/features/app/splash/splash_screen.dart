@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:whatsapp_clone/colors.dart';
-import 'package:whatsapp_clone/features/app/welcome/welcome_page.dart';
-import 'package:whatsapp_clone/features/auth/repository/auth_providers.dart';
-import 'package:whatsapp_clone/screens/mobile_screen_layout.dart';
+import 'package:on_peace/colors.dart';
+import 'package:on_peace/features/app/welcome/welcome_page.dart';
+import 'package:on_peace/features/auth/repository/auth_providers.dart';
+import 'package:on_peace/screens/mobile_screen_layout.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});

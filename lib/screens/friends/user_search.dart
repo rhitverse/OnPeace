@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:whatsapp_clone/colors.dart';
+import 'package:on_peace/colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:whatsapp_clone/screens/mobile_chat_screen.dart';
+import 'package:on_peace/screens/mobile_chat_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:whatsapp_clone/screens/chat/widget/profile/view_profile_screen.dart';
-import 'package:whatsapp_clone/screens/chat/widget/profile/view_profile_unknown.dart';
+import 'package:on_peace/screens/chat/widget/profile/view_profile_screen.dart';
+import 'package:on_peace/screens/chat/widget/profile/view_profile_unknown.dart';
 
 class UserSearch extends StatefulWidget {
   const UserSearch({super.key});
