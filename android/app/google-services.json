@@ -7,14 +7,14 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1022968286790:android:818c0ca0b82e6ad1364447",
+        "mobilesdk_app_id": "1:1022968286790:android:4e6b42cf66bd7df0364447",
         "android_client_info": {
           "package_name": "com.example.onpeace"
         }
       },
       "oauth_client": [
         {
-          "client_id": "1022968286790-fhig32nnp8ar5trtvp9epue1hfclhkov.apps.googleusercontent.com",
+          "client_id": "1022968286790-tr47sevrk1r68h87ig0ir8nfnjko1epb.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.example.onpeace",
@@ -39,7 +39,7 @@
               "client_type": 3
             },
             {
-              "client_id": "1022968286790-tnogtqj68uv2rcgb21k4snb8kqp3j279.apps.googleusercontent.com",
+              "client_id": "1022968286790-4c40mqp55q7qpao8h9isicvv8i9ceg5e.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
                 "bundle_id": "com.example.onpeace"

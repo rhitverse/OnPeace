@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:on_peace/colors.dart';
+import 'package:on_peace/screens/meet/widget/server_options_sheet.dart';
 import 'package:on_peace/widgets/helpful_widgets/channel_log_press_sheet.dart';
 
 class ServerListScreen extends StatefulWidget {
@@ -31,72 +32,7 @@ class _ServerListScreenState extends State<ServerListScreen> {
   }
 
   void _createNewServer() {
-    TextEditingController serverNameController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: backgroundColor,
-        title: const Text(
-          'Create New Server',
-          style: TextStyle(color: whiteColor, fontWeight: FontWeight.bold),
-        ),
-        content: TextField(
-          controller: serverNameController,
-          style: const TextStyle(color: whiteColor),
-          decoration: InputDecoration(
-            hintText: 'Enter server name',
-            hintStyle: const TextStyle(color: Colors.grey),
-            enabledBorder: OutlineInputBorder(
-              borderSide: const BorderSide(color: Colors.grey),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderSide: const BorderSide(color: tabColor),
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () {
-              if (serverNameController.text.isNotEmpty) {
-                setState(() {
-                  widget.servers.add({
-                    'name': serverNameController.text,
-                    'id': DateTime.now().millisecondsSinceEpoch.toString(),
-                    'channels': [
-                      {'name': 'general', 'type': 'text'},
-                      {'name': 'General', 'type': 'voice'},
-                    ],
-                  });
-                  selectedServerIndex = widget.servers.length - 1;
-                });
-
-                Navigator.pop(context);
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Server "${serverNameController.text}" created!',
-                    ),
-                    duration: const Duration(seconds: 2),
-                  ),
-                );
-              }
-            },
-            child: const Text(
-              'Create',
-              style: TextStyle(color: tabColor, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
-    );
+    ServerOptionsSheet.show(context, widget.servers);
   }
 
   @override

@@ -19,7 +19,9 @@ class _EmptyServerScreenState extends State<EmptyServerScreen> {
   void _createServer(BuildContext context) async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const CreateServerScreen()),
+      MaterialPageRoute(
+        builder: (_) => CreateServerScreen(servers: widget.servers),
+      ),
     );
     if (widget.onServerCreated != null) {
       widget.onServerCreated!();

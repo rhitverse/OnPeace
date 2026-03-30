@@ -1,81 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:on_peace/colors.dart';
+import 'package:on_peace/screens/meet/screen/server_list_screen.dart';
+import 'package:on_peace/widgets/helpful_widgets/info_popup.dart';
 
 class CreateServerScreen extends StatefulWidget {
-  const CreateServerScreen({super.key});
+  final List<Map<String, dynamic>> servers;
+  const CreateServerScreen({super.key, required this.servers});
   @override
   State<CreateServerScreen> createState() => _CreateServerScreenState();
 }
 
 class _CreateServerScreenState extends State<CreateServerScreen> {
-  final TextEditingController _serverNameController = TextEditingController(
-    text: "mobbin's server",
-  );
+  final TextEditingController _serverNameController = TextEditingController();
+  bool _showClear = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _serverNameController.addListener(() {
+      setState(() {
+        _showClear = _serverNameController.text.isNotEmpty;
+      });
+    });
+  }
 
   @override
   void dispose() {
     _serverNameController.dispose();
     super.dispose();
-  }
-
-  void _showCreateServerDialog(BuildContext context) {
-    TextEditingController dialogController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: backgroundColor,
-        title: const Text(
-          'Create Server',
-          style: TextStyle(color: whiteColor, fontWeight: FontWeight.bold),
-        ),
-        content: TextField(
-          controller: dialogController,
-          style: const TextStyle(color: whiteColor),
-          decoration: InputDecoration(
-            hintText: 'Enter server name',
-            hintStyle: const TextStyle(color: Colors.grey),
-            enabledBorder: OutlineInputBorder(
-              borderSide: const BorderSide(color: Colors.grey),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderSide: const BorderSide(color: tabColor),
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () {
-              if (dialogController.text.isNotEmpty) {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Server "${dialogController.text}" created!'),
-                    duration: const Duration(seconds: 2),
-                  ),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Please enter server name'),
-                    duration: Duration(seconds: 1),
-                  ),
-                );
-              }
-            },
-            child: const Text(
-              'Create',
-              style: TextStyle(color: tabColor, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -89,16 +41,15 @@ class _CreateServerScreenState extends State<CreateServerScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 10),
               Row(
                 children: [
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                    icon: const Icon(Icons.arrow_back_ios),
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 0),
               const Center(
                 child: Text(
                   'Create Your Server',
@@ -183,15 +134,15 @@ class _CreateServerScreenState extends State<CreateServerScreen> {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
-                  color: Colors.white60,
+                  color: whiteColor,
                   letterSpacing: 0.5,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 7),
               Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2B2D31),
+                  color: Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.white24, width: 1),
                 ),
@@ -200,22 +151,29 @@ class _CreateServerScreenState extends State<CreateServerScreen> {
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w500,
-                    color: Colors.white,
+                    color: whiteColor,
                   ),
                   decoration: InputDecoration(
                     border: InputBorder.none,
+                    hintText: "Enter Server's name",
+                    hintStyle: const TextStyle(
+                      color: Colors.white38,
+                      fontSize: 15,
+                    ),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 18,
-                      vertical: 20,
+                      vertical: 14,
                     ),
-                    suffixIcon: IconButton(
-                      onPressed: () => _serverNameController.clear(),
-                      icon: const Icon(
-                        Icons.cancel,
-                        color: Colors.white38,
-                        size: 26,
-                      ),
-                    ),
+                    suffixIcon: _showClear
+                        ? IconButton(
+                            onPressed: () => _serverNameController.clear(),
+                            icon: const Icon(
+                              Icons.cancel,
+                              color: Colors.white38,
+                              size: 22,
+                            ),
+                          )
+                        : null,
                   ),
                   cursorColor: uiColor,
                 ),
@@ -226,7 +184,7 @@ class _CreateServerScreenState extends State<CreateServerScreen> {
                   style: TextStyle(fontSize: 14, color: Colors.white54),
                   children: [
                     TextSpan(
-                      text: "By creating a server, you agree to MineChat",
+                      text: "By creating a server, you agree to OnPeace",
                     ),
                     TextSpan(
                       text: ' Community Guidelines.',
@@ -240,7 +198,28 @@ class _CreateServerScreenState extends State<CreateServerScreen> {
                 height: 55,
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () => _showCreateServerDialog(context),
+                  onPressed: () {
+                    if (_serverNameController.text.isNotEmpty) {
+                      widget.servers.add({
+                        'name': _serverNameController.text,
+                        'id': DateTime.now().millisecondsSinceEpoch.toString(),
+                        'channels': [
+                          {'name': 'general', 'type': 'text'},
+                          {'name': 'General', 'type': 'voice'},
+                        ],
+                      });
+
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              ServerListScreen(servers: widget.servers),
+                        ),
+                      );
+                    } else {
+                      InfoPopup.show(context, 'Please Enter Server Name');
+                    }
+                  },
 
                   style: ElevatedButton.styleFrom(
                     backgroundColor: uiColor,

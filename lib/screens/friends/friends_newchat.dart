@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:on_peace/colors.dart';
+import 'package:on_peace/screens/chat/group/screen/add_user_friend.dart';
 import 'package:on_peace/screens/friends/user_search.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -147,7 +148,12 @@ class _FriendsNewchatState extends State<FriendsNewchat> {
                       ),
                     ),
                     ListTile(
-                      onTap: () {},
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AddUserFriend(),
+                        ),
+                      ),
                       leading: SvgPicture.asset(
                         "assets/svg/addgroup.svg",
                         width: 34,
