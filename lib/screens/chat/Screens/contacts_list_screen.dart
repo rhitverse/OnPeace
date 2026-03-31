@@ -1,36 +1,51 @@
 import 'package:flutter/material.dart';
 import 'package:on_peace/colors.dart';
 import 'package:on_peace/common/utils/time_utils.dart';
-import 'package:on_peace/models/chat_contact.dart';
+import 'package:on_peace/screens/chat/Screens/chats_control.dart';
 import 'package:on_peace/screens/mobile_chat_screen.dart';
+import 'package:on_peace/screens/chat/group/screen/group_chat_screen.dart';
 
 class ContactsListScreen extends StatelessWidget {
-  final List<ChatContact> contacts;
+  final List<ChatItem> chats;
 
-  const ContactsListScreen({super.key, required this.contacts});
+  const ContactsListScreen({super.key, required this.chats});
 
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
-      itemCount: contacts.length,
+      itemCount: chats.length,
       padding: EdgeInsets.zero,
       itemBuilder: (context, index) {
-        final chat = contacts[index];
+        final chat = chats[index];
 
         return Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => MobileChatScreen(
-                    chatId: chat.chatId,
-                    receiverUid: chat.receiverUid,
-                    receiverDisplayName: chat.receiverDisplayName,
-                    receiverProfilePic: chat.receiverProfilePic,
+              // Navigate based on chat type
+              if (chat.chatType == 'group') {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => GroupChatScreen(
+                      groupId: chat.chatId,
+                      groupName: chat.name,
+                      groupProfilePic: chat.profilePic,
+                      memberIds: chat.members,
+                    ),
                   ),
-                ),
-              );
+                );
+              } else {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => MobileChatScreen(
+                      chatId: chat.chatId,
+                      receiverUid: chat.receiverUid,
+                      receiverDisplayName: chat.name,
+                      receiverProfilePic: chat.profilePic,
+                    ),
+                  ),
+                );
+              }
             },
             splashColor: Colors.white.withOpacity(0.1),
             highlightColor: Colors.white.withOpacity(0.05),
@@ -38,27 +53,34 @@ class ContactsListScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 children: [
+                  // Avatar
                   CircleAvatar(
                     radius: 30,
                     backgroundColor: Colors.grey[800],
-                    backgroundImage: chat.receiverProfilePic.isNotEmpty
-                        ? NetworkImage(chat.receiverProfilePic)
+                    backgroundImage: chat.profilePic.isNotEmpty
+                        ? NetworkImage(chat.profilePic)
                         : null,
-                    child: chat.receiverProfilePic.isEmpty
-                        ? Icon(Icons.person, size: 28, color: Colors.grey[600])
+                    child: chat.profilePic.isEmpty
+                        ? Icon(
+                            chat.chatType == 'group'
+                                ? Icons.group
+                                : Icons.person,
+                            size: 28,
+                            color: Colors.grey[600],
+                          )
                         : null,
                   ),
-
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Name and Time
                         Row(
                           children: [
                             Expanded(
                               child: Text(
-                                chat.receiverDisplayName,
+                                chat.name,
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w500,
@@ -70,7 +92,6 @@ class ContactsListScreen extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 8),
-
                             Text(
                               getRelativeTime(chat.lastMessageTime),
                               style: TextStyle(
@@ -86,6 +107,7 @@ class ContactsListScreen extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 4),
+                        // Last Message
                         Row(
                           children: [
                             if (chat.lastMessageMediaType != null)
@@ -111,6 +133,7 @@ class ContactsListScreen extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
+                            // Unread Badge
                             if (chat.unreadCount > 0)
                               Container(
                                 margin: const EdgeInsets.only(left: 6),

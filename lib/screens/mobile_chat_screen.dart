@@ -127,10 +127,8 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
             receiverId: widget.receiverUid,
           );
 
-      // Remove pending message after successful send
       ref.read(pendingMessagesProvider.notifier).removePending(tempId);
     } catch (e) {
-      // Update status to failed
       ref.read(pendingMessagesProvider.notifier).updateStatus(tempId, 'failed');
 
       if (mounted) {
@@ -281,33 +279,26 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                         .cast<Map<String, dynamic>>();
                 final pendingMessages = ref.watch(pendingMessagesProvider);
 
-                // Combine Firebase messages and pending messages, filtering out duplicates
                 final allMessages = <Map<String, dynamic>>[];
 
-                // Add Firebase messages
                 allMessages.addAll(firebaseMessages);
 
-                // Add pending messages, but skip ones that already appear in Firebase
                 for (final pm in pendingMessages) {
                   bool isDuplicate = false;
 
-                  // Check if this pending message matches an existing Firebase message
                   try {
                     for (final fbMsg in firebaseMessages) {
                       final fbTime = DateTime.tryParse(
                         fbMsg['time'] as String? ?? '',
                       );
 
-                      // Match by: sender + mediaType + (timestamp OR fileName)
                       final senderMatch = fbMsg['senderId'] == pm.senderId;
                       final mediaTypeMatch = fbMsg['mediaType'] == pm.mediaType;
 
-                      // For files, match by fileName (more reliable)
                       final fileNameMatch =
                           pm.fileName != null &&
                           fbMsg['fileName'] == pm.fileName;
 
-                      // For media, match by timestamp (within 10 seconds for network delay)
                       final timeMatch =
                           fbTime != null &&
                           pm.sentTime.difference(fbTime).inSeconds.abs() < 10;
@@ -321,7 +312,6 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                     }
                   } catch (_) {}
 
-                  // Also skip if local file path matches Firebase message
                   if (!isDuplicate && pm.localFilePath != null) {
                     for (final fbMsg in firebaseMessages) {
                       if (fbMsg['localFilePath'] == pm.localFilePath) {
@@ -349,7 +339,6 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                   }
                 }
 
-                // Sort by time (latest first)
                 allMessages.sort((a, b) {
                   try {
                     final timeA = DateTime.parse(a['time'] ?? '');
@@ -360,12 +349,10 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                   }
                 });
 
-                // Show loading state if still loading initial data
                 if (!snapshot.hasData && pendingMessages.isEmpty) {
                   return const ChatLoader();
                 }
 
-                // Show loading state if no messages yet
                 if (allMessages.isEmpty) {
                   return const ChatLoader();
                 }
@@ -491,6 +478,7 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
             onSend: _sendMessage,
             chatId: widget.chatId,
             receiverUid: widget.receiverUid,
+            isGroupChat: false,
           ),
         ],
       ),

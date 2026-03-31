@@ -11,12 +11,14 @@ import 'package:on_peace/screens/chat/provider/chat_provider.dart';
 class VoiceRecorderField extends ConsumerStatefulWidget {
   final String chatId;
   final String receiverUid;
+  final bool isGroupChat;
   final VoidCallback onRecordingDone;
 
   const VoiceRecorderField({
     super.key,
     required this.chatId,
     required this.receiverUid,
+    this.isGroupChat = false,
     required this.onRecordingDone,
   });
 

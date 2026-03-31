@@ -5,7 +5,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:on_peace/common/utils/common_cloudinary_repository.dart';
 
-// Group Chat Repository - Same structure as ChatRepository but for group chats
 class GroupChatRepository {
   final FirebaseFirestore _firestore;
   final _encryption = EncryptionService();
@@ -14,6 +13,7 @@ class GroupChatRepository {
   GroupChatRepository({required FirebaseFirestore firestore})
     : _firestore = firestore;
 
+  /// Get Messages Stream
   Stream<List<Map<String, dynamic>>> getMessagesStream(String groupId) {
     final currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
 
@@ -25,6 +25,7 @@ class GroupChatRepository {
         .snapshots()
         .asyncMap((snap) async {
           final List<Map<String, dynamic>> messages = [];
+
           for (final doc in snap.docs) {
             final data = doc.data();
             final senderId = data['senderId'] ?? '';
@@ -55,12 +56,10 @@ class GroupChatRepository {
             String? decryptedMediaUrl;
             if (data.containsKey('mediaUrl') && data['mediaUrl'] != null) {
               try {
-                if (data.containsKey('mediaUrl') && data['mediaUrl'] != null) {
-                  decryptedMediaUrl = await _encryption.decryptMessage(
-                    data['mediaUrl'],
-                    currentUid,
-                  );
-                }
+                decryptedMediaUrl = await _encryption.decryptMessage(
+                  data['mediaUrl'],
+                  currentUid,
+                );
               } catch (e) {
                 debugPrint('Error decrypting mediaUrl: $e');
                 decryptedMediaUrl = data['mediaUrl'];
@@ -82,10 +81,12 @@ class GroupChatRepository {
               'duration': data['duration'],
             });
           }
+
           return messages;
         });
   }
 
+  /// Send Text Message
   Future<void> sendMessage({
     required String groupId,
     required String senderId,
@@ -126,6 +127,7 @@ class GroupChatRepository {
     }
   }
 
+  /// Send Image
   Future<void> sendImage({
     required String groupId,
     required String senderId,
@@ -135,7 +137,6 @@ class GroupChatRepository {
   }) async {
     try {
       debugPrint('Starting group image upload...');
-
       await _createGroupIfNotExists(groupId);
 
       final mediaUrl = await _cloudinaryRepository.storeFileToCloudinary(
@@ -145,8 +146,6 @@ class GroupChatRepository {
       if (mediaUrl == null) {
         throw Exception('Failed to upload image to Cloudinary');
       }
-
-      debugPrint('Image uploaded: $mediaUrl');
 
       final fileSize = await imageFile.length();
       final fileName = imageFile.path.split('/').last;
@@ -180,7 +179,6 @@ class GroupChatRepository {
           });
 
       await _updateLastMessage(groupId, senderId, senderName, '🖼️ Photo');
-
       debugPrint('Image message sent successfully');
     } catch (e) {
       debugPrint('Send group image error: $e');
@@ -188,6 +186,7 @@ class GroupChatRepository {
     }
   }
 
+  /// Send Image & Get ID
   Future<String?> sendImageAndGetId({
     required String groupId,
     required String senderId,
@@ -197,7 +196,6 @@ class GroupChatRepository {
   }) async {
     try {
       debugPrint('Starting group image upload...');
-
       await _createGroupIfNotExists(groupId);
 
       final mediaUrl = await _cloudinaryRepository.storeFileToCloudinary(
@@ -207,8 +205,6 @@ class GroupChatRepository {
       if (mediaUrl == null) {
         throw Exception('Failed to upload image to Cloudinary');
       }
-
-      debugPrint('Image uploaded: $mediaUrl');
 
       final fileSize = await imageFile.length();
       final fileName = imageFile.path.split('/').last;
@@ -242,8 +238,6 @@ class GroupChatRepository {
           });
 
       await _updateLastMessage(groupId, senderId, senderName, '🖼️ Photo');
-
-      debugPrint('Image message sent successfully with ID: ${docRef.id}');
       return docRef.id;
     } catch (e) {
       debugPrint('Send group image error: $e');
@@ -251,6 +245,7 @@ class GroupChatRepository {
     }
   }
 
+  /// Send Video
   Future<void> sendVideo({
     required String groupId,
     required String senderId,
@@ -261,7 +256,6 @@ class GroupChatRepository {
   }) async {
     try {
       debugPrint('Starting group video upload...');
-
       await _createGroupIfNotExists(groupId);
 
       final mediaUrl = await _cloudinaryRepository.storeFileToCloudinary(
@@ -271,8 +265,6 @@ class GroupChatRepository {
       if (mediaUrl == null) {
         throw Exception('Failed to upload video to Cloudinary');
       }
-
-      debugPrint('Video uploaded: $mediaUrl');
 
       final fileSize = await videoFile.length();
       final fileName = videoFile.path.split('/').last;
@@ -307,7 +299,6 @@ class GroupChatRepository {
           });
 
       await _updateLastMessage(groupId, senderId, senderName, '🎥 Video');
-
       debugPrint('Video message sent successfully');
     } catch (e) {
       debugPrint('Send group video error: $e');
@@ -315,6 +306,7 @@ class GroupChatRepository {
     }
   }
 
+  /// Send Video & Get ID
   Future<String?> sendVideoAndGetId({
     required String groupId,
     required String senderId,
@@ -325,7 +317,6 @@ class GroupChatRepository {
   }) async {
     try {
       debugPrint('Starting group video upload...');
-
       await _createGroupIfNotExists(groupId);
 
       final mediaUrl = await _cloudinaryRepository.storeFileToCloudinary(
@@ -335,8 +326,6 @@ class GroupChatRepository {
       if (mediaUrl == null) {
         throw Exception('Failed to upload video to Cloudinary');
       }
-
-      debugPrint('Video uploaded: $mediaUrl');
 
       final fileSize = await videoFile.length();
       final fileName = videoFile.path.split('/').last;
@@ -371,8 +360,6 @@ class GroupChatRepository {
           });
 
       await _updateLastMessage(groupId, senderId, senderName, '🎥 Video');
-
-      debugPrint('Video message sent successfully with ID: ${docRef.id}');
       return docRef.id;
     } catch (e) {
       debugPrint('Send group video error: $e');
@@ -380,6 +367,210 @@ class GroupChatRepository {
     }
   }
 
+  /// Send File
+  Future<void> sendFile({
+    required String groupId,
+    required String senderId,
+    required String senderName,
+    required String senderProfilePic,
+    required File file,
+    required String fileType,
+  }) async {
+    try {
+      debugPrint('📤 Starting group file upload...');
+      await _createGroupIfNotExists(groupId);
+
+      final isDocument = [
+        'pdf',
+        'doc',
+        'docx',
+        'xls',
+        'xlsx',
+        'ppt',
+        'pptx',
+        'txt',
+      ].contains(fileType.toLowerCase());
+
+      final fileUrl = await _cloudinaryRepository.storeFileToCloudinary(
+        file,
+        isDocument: isDocument,
+      );
+
+      if (fileUrl == null) {
+        throw Exception('Failed to upload file to Cloudinary');
+      }
+
+      final fileSize = await file.length();
+      final fileName = file.path.split('/').last;
+
+      String encryptedUrl = fileUrl;
+      final senderPublicKey =
+          (await _firestore.collection('users').doc(senderId).get())
+              .data()?['publicKey'];
+
+      if (senderPublicKey != null) {
+        encryptedUrl = await _encryption.encryptMessage(
+          fileUrl,
+          senderPublicKey,
+        );
+      }
+
+      await _firestore
+          .collection('GroupChats')
+          .doc(groupId)
+          .collection('messages')
+          .add({
+            'senderId': senderId,
+            'senderName': senderName,
+            'senderProfilePic': senderProfilePic,
+            'mediaUrl': encryptedUrl,
+            'mediaType': fileType,
+            'fileName': fileName,
+            'fileSize': fileSize,
+            'isRead': false,
+            'time': FieldValue.serverTimestamp(),
+          });
+
+      await _updateLastMessage(
+        groupId,
+        senderId,
+        senderName,
+        '📄 ${fileType.toUpperCase()}',
+      );
+
+      debugPrint('File message sent successfully');
+    } catch (e) {
+      debugPrint('Send group file error: $e');
+      rethrow;
+    }
+  }
+
+  /// Send File & Get ID
+  Future<String?> sendFileAndGetId({
+    required String groupId,
+    required String senderId,
+    required String senderName,
+    required String senderProfilePic,
+    required File file,
+    required String fileType,
+  }) async {
+    try {
+      debugPrint('📤 Starting group file upload...');
+      await _createGroupIfNotExists(groupId);
+
+      final isDocument = [
+        'pdf',
+        'doc',
+        'docx',
+        'xls',
+        'xlsx',
+        'ppt',
+        'pptx',
+        'txt',
+      ].contains(fileType.toLowerCase());
+
+      final fileUrl = await _cloudinaryRepository.storeFileToCloudinary(
+        file,
+        isDocument: isDocument,
+      );
+
+      if (fileUrl == null) {
+        throw Exception('Failed to upload file to Cloudinary');
+      }
+
+      final fileSize = await file.length();
+      final fileName = file.path.split('/').last;
+
+      String encryptedUrl = fileUrl;
+      final senderPublicKey =
+          (await _firestore.collection('users').doc(senderId).get())
+              .data()?['publicKey'];
+
+      if (senderPublicKey != null) {
+        encryptedUrl = await _encryption.encryptMessage(
+          fileUrl,
+          senderPublicKey,
+        );
+      }
+
+      final docRef = await _firestore
+          .collection('GroupChats')
+          .doc(groupId)
+          .collection('messages')
+          .add({
+            'senderId': senderId,
+            'senderName': senderName,
+            'senderProfilePic': senderProfilePic,
+            'mediaUrl': encryptedUrl,
+            'mediaType': fileType,
+            'fileName': fileName,
+            'fileSize': fileSize,
+            'isRead': false,
+            'time': FieldValue.serverTimestamp(),
+          });
+
+      await _updateLastMessage(
+        groupId,
+        senderId,
+        senderName,
+        '📄 ${fileType.toUpperCase()}',
+      );
+
+      return docRef.id;
+    } catch (e) {
+      debugPrint('Send group file error: $e');
+      rethrow;
+    }
+  }
+
+  /// Send GIF
+  Future<void> sendGif({
+    required String groupId,
+    required String senderId,
+    required String senderName,
+    required String senderProfilePic,
+    required String gifUrl,
+  }) async {
+    try {
+      debugPrint('Sending group GIF...');
+      await _createGroupIfNotExists(groupId);
+
+      String encryptedUrl = gifUrl;
+      final senderPublicKey =
+          (await _firestore.collection('users').doc(senderId).get())
+              .data()?['publicKey'];
+
+      if (senderPublicKey != null) {
+        encryptedUrl = await _encryption.encryptMessage(
+          gifUrl,
+          senderPublicKey,
+        );
+      }
+
+      await _firestore
+          .collection('GroupChats')
+          .doc(groupId)
+          .collection('messages')
+          .add({
+            'senderId': senderId,
+            'senderName': senderName,
+            'senderProfilePic': senderProfilePic,
+            'mediaUrl': encryptedUrl,
+            'mediaType': 'gif',
+            'fileName': 'GIF',
+            'isRead': false,
+            'time': FieldValue.serverTimestamp(),
+          });
+
+      await _updateLastMessage(groupId, senderId, senderName, 'GIF');
+      debugPrint('GIF sent successfully');
+    } catch (e) {
+      debugPrint('Send group GIF error: $e');
+      rethrow;
+    }
+  }
+
+  /// Send Multiple Media
   Future<void> sendMultipleMedia({
     required String groupId,
     required String senderId,
@@ -390,7 +581,6 @@ class GroupChatRepository {
   }) async {
     try {
       debugPrint('Starting batch group media upload...');
-
       await _createGroupIfNotExists(groupId);
 
       final senderPublicKey =
@@ -407,8 +597,6 @@ class GroupChatRepository {
       if (mediaUrls.any((url) => url == null)) {
         throw Exception('Failed to upload one or more files to Cloudinary');
       }
-
-      debugPrint('All files uploaded successfully');
 
       final batch = _firestore.batch();
       final messagesRef = _firestore
@@ -462,221 +650,14 @@ class GroupChatRepository {
     }
   }
 
-  Future<void> sendFile({
-    required String groupId,
-    required String senderId,
-    required String senderName,
-    required String senderProfilePic,
-    required File file,
-    required String fileType,
-  }) async {
-    try {
-      debugPrint('📤 Starting group file upload...');
-
-      await _createGroupIfNotExists(groupId);
-
-      final isDocument = [
-        'pdf',
-        'doc',
-        'docx',
-        'xls',
-        'xlsx',
-        'ppt',
-        'pptx',
-        'txt',
-      ].contains(fileType.toLowerCase());
-
-      final fileUrl = await _cloudinaryRepository.storeFileToCloudinary(
-        file,
-        isDocument: isDocument,
-      );
-
-      if (fileUrl == null) {
-        throw Exception('Failed to upload file to Cloudinary');
-      }
-
-      debugPrint('File uploaded: $fileUrl');
-
-      final fileSize = await file.length();
-      final fileName = file.path.split('/').last;
-
-      String encryptedUrl = fileUrl;
-      final senderPublicKey =
-          (await _firestore.collection('users').doc(senderId).get())
-              .data()?['publicKey'];
-
-      if (senderPublicKey != null) {
-        encryptedUrl = await _encryption.encryptMessage(
-          fileUrl,
-          senderPublicKey,
-        );
-      }
-
-      await _firestore
-          .collection('GroupChats')
-          .doc(groupId)
-          .collection('messages')
-          .add({
-            'senderId': senderId,
-            'senderName': senderName,
-            'senderProfilePic': senderProfilePic,
-            'mediaUrl': encryptedUrl,
-            'mediaType': fileType,
-            'fileName': fileName,
-            'fileSize': fileSize,
-            'isRead': false,
-            'time': FieldValue.serverTimestamp(),
-          });
-
-      await _updateLastMessage(
-        groupId,
-        senderId,
-        senderName,
-        '📄 ${fileType.toUpperCase()}',
-      );
-
-      debugPrint('File message sent successfully');
-    } catch (e) {
-      debugPrint('Send group file error: $e');
-      rethrow;
-    }
-  }
-
-  Future<String?> sendFileAndGetId({
-    required String groupId,
-    required String senderId,
-    required String senderName,
-    required String senderProfilePic,
-    required File file,
-    required String fileType,
-  }) async {
-    try {
-      debugPrint('📤 Starting group file upload...');
-
-      await _createGroupIfNotExists(groupId);
-
-      final isDocument = [
-        'pdf',
-        'doc',
-        'docx',
-        'xls',
-        'xlsx',
-        'ppt',
-        'pptx',
-        'txt',
-      ].contains(fileType.toLowerCase());
-
-      final fileUrl = await _cloudinaryRepository.storeFileToCloudinary(
-        file,
-        isDocument: isDocument,
-      );
-
-      if (fileUrl == null) {
-        throw Exception('Failed to upload file to Cloudinary');
-      }
-
-      debugPrint('File uploaded: $fileUrl');
-
-      final fileSize = await file.length();
-      final fileName = file.path.split('/').last;
-
-      String encryptedUrl = fileUrl;
-      final senderPublicKey =
-          (await _firestore.collection('users').doc(senderId).get())
-              .data()?['publicKey'];
-
-      if (senderPublicKey != null) {
-        encryptedUrl = await _encryption.encryptMessage(
-          fileUrl,
-          senderPublicKey,
-        );
-      }
-
-      final docRef = await _firestore
-          .collection('GroupChats')
-          .doc(groupId)
-          .collection('messages')
-          .add({
-            'senderId': senderId,
-            'senderName': senderName,
-            'senderProfilePic': senderProfilePic,
-            'mediaUrl': encryptedUrl,
-            'mediaType': fileType,
-            'fileName': fileName,
-            'fileSize': fileSize,
-            'isRead': false,
-            'time': FieldValue.serverTimestamp(),
-          });
-
-      await _updateLastMessage(
-        groupId,
-        senderId,
-        senderName,
-        '📄 ${fileType.toUpperCase()}',
-      );
-
-      debugPrint('File message sent successfully with ID: ${docRef.id}');
-      return docRef.id;
-    } catch (e) {
-      debugPrint('Send group file error: $e');
-      rethrow;
-    }
-  }
-
-  Future<void> sendGif({
-    required String groupId,
-    required String senderId,
-    required String senderName,
-    required String senderProfilePic,
-    required String gifUrl,
-  }) async {
-    try {
-      debugPrint('Sending group GIF...');
-      await _createGroupIfNotExists(groupId);
-
-      String encryptedUrl = gifUrl;
-      final senderPublicKey =
-          (await _firestore.collection('users').doc(senderId).get())
-              .data()?['publicKey'];
-
-      if (senderPublicKey != null) {
-        encryptedUrl = await _encryption.encryptMessage(
-          gifUrl,
-          senderPublicKey,
-        );
-      }
-
-      await _firestore
-          .collection('GroupChats')
-          .doc(groupId)
-          .collection('messages')
-          .add({
-            'senderId': senderId,
-            'senderName': senderName,
-            'senderProfilePic': senderProfilePic,
-            'mediaUrl': encryptedUrl,
-            'mediaType': 'gif',
-            'fileName': 'GIF',
-            'isRead': false,
-            'time': FieldValue.serverTimestamp(),
-          });
-
-      await _updateLastMessage(groupId, senderId, senderName, 'GIF');
-
-      debugPrint('GiF send succesfully');
-    } catch (e) {
-      debugPrint('Send group GIF error: $e');
-      rethrow;
-    }
-  }
-
+  /// Delete Media Message
   Future<void> deleteMediaMessage({
     required String groupId,
     required String messageId,
     required String mediaUrl,
   }) async {
     try {
-      debugPrint('🗑️ Deleting media...');
+      debugPrint('🗑️ Deleting group media...');
 
       await _cloudinaryRepository.deleteFileFromCloudinary(mediaUrl);
 
@@ -694,17 +675,20 @@ class GroupChatRepository {
     }
   }
 
+  /// Mark As Read
   Future<void> markAsRead(String groupId, String userId) async {
     try {
       await _firestore.collection('GroupChats').doc(groupId).update({
         'unreadCount_$userId': 0,
       });
+
       final snap = await _firestore
           .collection('GroupChats')
           .doc(groupId)
           .collection('messages')
           .where('isRead', isEqualTo: false)
           .get();
+
       final batch = _firestore.batch();
       for (final doc in snap.docs) {
         batch.update(doc.reference, {'isRead': true});
@@ -715,6 +699,7 @@ class GroupChatRepository {
     }
   }
 
+  /// Get User Groups
   Stream<QuerySnapshot> getUserGroups(String uid) {
     return _firestore
         .collection('GroupChats')
@@ -723,6 +708,7 @@ class GroupChatRepository {
         .snapshots();
   }
 
+  /// Create Group Chat
   Future<void> createGroupChat({
     required String groupId,
     required String groupName,
@@ -730,18 +716,10 @@ class GroupChatRepository {
     String groupProfilePic = '',
   }) async {
     try {
-      debugPrint('Creating group in Firestore...');
-      debugPrint('GroupId: $groupId');
-      debugPrint('GroupName: $groupName');
-      debugPrint('Members: $members');
-      debugPrint('ProfilePic: $groupProfilePic');
-
       final doc = await _firestore.collection('GroupChats').doc(groupId).get();
 
       if (!doc.exists) {
-        debugPrint('GroupChats/$groupId does not exist, creating...');
-
-        final groupData = {
+        await _firestore.collection('GroupChats').doc(groupId).set({
           'groupName': groupName,
           'groupProfilePic': groupProfilePic,
           'members': members,
@@ -751,15 +729,9 @@ class GroupChatRepository {
           'lastMessageSenderName': '',
           'status': 'active',
           for (var uid in members) 'unreadCount_$uid': 0,
-        };
+        });
 
-        debugPrint('Setting group data: $groupData');
-
-        await _firestore.collection('GroupChats').doc(groupId).set(groupData);
-
-        debugPrint('Group created successfully in Firestore!');
-      } else {
-        debugPrint('GroupChats/$groupId already exists, skipping creation');
+        debugPrint('Group created successfully');
       }
     } catch (e) {
       debugPrint('Error creating group: $e');
@@ -767,6 +739,7 @@ class GroupChatRepository {
     }
   }
 
+  /// Add Member
   Future<void> addMember({
     required String groupId,
     required String memberId,
@@ -777,6 +750,7 @@ class GroupChatRepository {
     });
   }
 
+  /// Remove Member
   Future<void> removeMember({
     required String groupId,
     required String memberId,
@@ -786,11 +760,14 @@ class GroupChatRepository {
     });
   }
 
+  // Helper Methods
+
   Future<void> _createGroupIfNotExists(String groupId) async {
     final groupDoc = await _firestore
         .collection('GroupChats')
         .doc(groupId)
         .get();
+
     if (!groupDoc.exists) {
       final currentUid = FirebaseAuth.instance.currentUser?.uid;
       if (currentUid != null) {
@@ -809,12 +786,30 @@ class GroupChatRepository {
     String senderName,
     String message,
   ) async {
-    await _firestore.collection('GroupChats').doc(groupId).update({
-      'lastMessage': message,
-      'lastMessageTime': FieldValue.serverTimestamp(),
-      'lastMessageSenderId': senderId,
-      'lastMessageSenderName': senderName,
-      'status': 'active',
-    });
+    try {
+      final senderPublicKey =
+          (await _firestore.collection('users').doc(senderId).get())
+              .data()?['publicKey'];
+
+      String encryptedMessage = message;
+      if (senderPublicKey != null) {
+        encryptedMessage = await _encryption.encryptMessage(
+          message,
+          senderPublicKey,
+        );
+      }
+
+      await _firestore.collection('GroupChats').doc(groupId).update({
+        'lastMessage': encryptedMessage, // Encrypted in Firebase
+        'lastMessagePlain': message, // Plain text for UI display
+        'lastMessageTime': FieldValue.serverTimestamp(),
+        'lastMessageSenderId': senderId,
+        'lastMessageSenderName': senderName,
+        'status': 'active',
+      });
+    } catch (e) {
+      debugPrint('Error updating last message: $e');
+      rethrow;
+    }
   }
 }

@@ -1,7 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:on_peace/screens/chat/group/controller/group_chat_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:on_peace/colors.dart';
 import 'package:on_peace/screens/chat/provider/chat_provider.dart';
@@ -22,6 +24,7 @@ class BottomChatField extends ConsumerStatefulWidget {
   final VoidCallback onSend;
   final String chatId;
   final String receiverUid;
+  final bool isGroupChat;
 
   const BottomChatField({
     super.key,
@@ -32,6 +35,7 @@ class BottomChatField extends ConsumerStatefulWidget {
     required this.onSend,
     required this.chatId,
     required this.receiverUid,
+    this.isGroupChat = false,
   });
 
   @override
@@ -116,7 +120,6 @@ class _BottomChatFieldState extends ConsumerState<BottomChatField>
     );
 
     if (pollData != null && mounted) {
-      // Handle poll creation here - you'll implement this with chat controller
       debugPrint('Poll created: ${pollData['question']}');
       debugPrint('Options: ${pollData['options']}');
     }
@@ -157,6 +160,7 @@ class _BottomChatFieldState extends ConsumerState<BottomChatField>
             chatId: widget.chatId,
             receiverUid: widget.receiverUid,
             initialFiles: files,
+            isGroupChat: widget.isGroupChat,
           ),
         ),
       );
@@ -180,6 +184,7 @@ class _BottomChatFieldState extends ConsumerState<BottomChatField>
       chatId: widget.chatId,
       receiverUid: widget.receiverUid,
       currentUid: currentUid,
+      isGroupChat: widget.isGroupChat,
     );
   }
 
@@ -187,15 +192,37 @@ class _BottomChatFieldState extends ConsumerState<BottomChatField>
     final currentUid = FirebaseAuth.instance.currentUser?.uid;
     if (currentUid == null) return;
     try {
-      await ref
-          .read(chatControllerProvider)
-          .sendGif(
-            chatId: widget.chatId,
-            senderId: currentUid,
-            gifUrl: gifUrl,
-            receiverId: widget.receiverUid,
-          );
-    } catch (_) {}
+      if (widget.isGroupChat) {
+        final currentUserData = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUid)
+            .get();
+
+        final senderName = currentUserData.data()?['displayname'] ?? 'Unknown';
+        final senderProfilePic = currentUserData.data()?['profilePic'] ?? '';
+
+        await ref
+            .read(groupChatControllerProvider)
+            .sendGif(
+              groupId: widget.chatId,
+              senderId: currentUid,
+              senderName: senderName,
+              senderProfilePic: senderProfilePic,
+              gifUrl: gifUrl,
+            );
+      } else {
+        await ref
+            .read(chatControllerProvider)
+            .sendGif(
+              chatId: widget.chatId,
+              senderId: currentUid,
+              gifUrl: gifUrl,
+              receiverId: widget.receiverUid,
+            );
+      }
+    } catch (e) {
+      print('GIF send error: $e');
+    }
   }
 
   @override
@@ -314,9 +341,7 @@ class _BottomChatFieldState extends ConsumerState<BottomChatField>
                 label: 'Diary',
                 iconHeight: 52,
                 iconWidth: 52,
-                onTap: () {
-                  // TODO: Implement diary feature
-                },
+                onTap: () {},
               ),
             ],
           ),
@@ -471,6 +496,7 @@ class _BottomChatFieldState extends ConsumerState<BottomChatField>
           VoiceRecorderField(
             chatId: widget.chatId,
             receiverUid: widget.receiverUid,
+            isGroupChat: widget.isGroupChat,
             onRecordingDone: () => setState(() => _mode = ChatInputMode.none),
           ),
       ],

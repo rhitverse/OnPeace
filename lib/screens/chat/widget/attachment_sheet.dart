@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:on_peace/screens/chat/group/controller/group_chat_provider.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:on_peace/colors.dart';
 import 'package:on_peace/screens/chat/controller/chat_controller.dart';
@@ -15,6 +17,7 @@ void showAttachmentSheet(
   required String chatId,
   required String receiverUid,
   required String currentUid,
+  bool isGroupChat = false,
 }) {
   showModalBottomSheet(
     context: context,
@@ -25,6 +28,7 @@ void showAttachmentSheet(
       chatId: chatId,
       receiverUid: receiverUid,
       currentUid: currentUid,
+      isGroupChat: isGroupChat,
     ),
   );
 }
@@ -33,11 +37,13 @@ class AttachmentSheet extends ConsumerStatefulWidget {
   final String chatId;
   final String receiverUid;
   final String currentUid;
+  final bool isGroupChat;
   const AttachmentSheet({
     super.key,
     required this.chatId,
     required this.receiverUid,
     required this.currentUid,
+    this.isGroupChat = false,
   });
 
   @override
@@ -170,6 +176,7 @@ class _AttachmentSheetState extends ConsumerState<AttachmentSheet>
     final receiverUid = widget.receiverUid;
     final currentUid = widget.currentUid;
     final chatController = ref.read(chatControllerProvider);
+    final groupChatController = ref.read(groupChatControllerProvider);
     final uploadingNotifier = ref.read(uploadingMessagesProvider.notifier);
     final pendingNotifier = ref.read(pendingMessagesProvider.notifier);
 
@@ -230,6 +237,7 @@ class _AttachmentSheetState extends ConsumerState<AttachmentSheet>
           chatController: chatController,
           uploadingNotifier: uploadingNotifier,
           pendingNotifier: pendingNotifier,
+          isGroupChat: widget.isGroupChat,
         ),
       ),
     );
@@ -245,29 +253,57 @@ class _AttachmentSheetState extends ConsumerState<AttachmentSheet>
     required ChatController chatController,
     required UploadingMessagesNotifier uploadingNotifier,
     required PendingMessagesNotifier pendingNotifier,
+    required bool isGroupChat,
   }) async {
     try {
-      if (task.mediaType == 'image') {
-        await chatController.sendImage(
-          chatId: chatId,
-          senderId: currentUid,
-          imageFile: task.file,
-          receiverId: receiverUid,
-        );
+      if (isGroupChat) {
+        final groupChatController = ref.read(groupChatControllerProvider);
+        final currentUserData = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUid)
+            .get();
+        final senderName = currentUserData.data()?['displayname'] ?? 'Unknown';
+        final senderProfilePic = currentUserData.data()?['profilePic'] ?? '';
+
+        if (task.mediaType == 'image') {
+          await groupChatController.sendImage(
+            groupId: chatId,
+            senderId: currentUid,
+            senderName: senderName,
+            senderProfilePic: senderProfilePic,
+            imageFile: task.file,
+          );
+        } else if (task.mediaType == 'video') {
+          await groupChatController.sendVideo(
+            groupId: chatId,
+            senderId: chatId,
+            senderName: senderName,
+            senderProfilePic: senderProfilePic,
+            videoFile: task.file,
+            duration: task.duration,
+          );
+        }
       } else {
-        await chatController.sendVideo(
-          chatId: chatId,
-          senderId: currentUid,
-          videoFile: task.file,
-          receiverId: receiverUid,
-          duration: task.duration,
-        );
+        if (task.mediaType == 'image') {
+          await chatController.sendImage(
+            chatId: chatId,
+            senderId: currentUid,
+            imageFile: task.file,
+            receiverId: receiverUid,
+          );
+        } else {
+          await chatController.sendVideo(
+            chatId: chatId,
+            senderId: currentUid,
+            videoFile: task.file,
+            receiverId: receiverUid,
+            duration: task.duration,
+          );
+        }
       }
-      // Remove from pending after successful upload
       pendingNotifier.removePending(task.tempId);
     } catch (e) {
       debugPrint('Upload error (${task.tempId}): $e');
-      // Update pending message status to failed
       pendingNotifier.updateStatus(task.tempId, 'failed');
     } finally {
       uploadingNotifier.remove(task.tempId);

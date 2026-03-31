@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:on_peace/common/encryption/encryption_service.dart';
-import 'package:on_peace/models/chat_contact.dart';
 import 'package:on_peace/screens/chat/Screens/contacts_list_screen.dart';
 import 'package:on_peace/screens/chat/Screens/empty_contacts_screen.dart';
 import 'package:on_peace/screens/chat/widget/chat_list_loader.dart';
@@ -29,119 +28,231 @@ class ChatControl extends ConsumerWidget {
             ),
           );
         }
-        if (!snapshot.hasData) {
-          return const ChatListLoader();
-        }
 
-        final docs = snapshot.data!.docs;
-        if (docs.isEmpty) {
-          return const EmptyContactsScreen();
-        }
+        final oneOnOneChats = snapshot.data?.docs ?? [];
 
-        return FutureBuilder<List<ChatContact>>(
-          future: Future.wait(
-            docs.map((doc) async {
-              final data = doc.data() as Map<String, dynamic>;
-              final participants = data['participants'] as List<dynamic>? ?? [];
-              if (participants.isEmpty) return null;
-
-              final otherUid = participants.firstWhere(
-                (uid) => uid != userId,
-                orElse: () => null,
-              );
-              if (otherUid == null) return null;
-
-              final otherUserDoc = await FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(otherUid)
-                  .get();
-              if (!otherUserDoc.exists) return null;
-
-              final otherUserData = otherUserDoc.data() ?? {};
-              final modifiedData = Map<String, dynamic>.from(data);
-
-              final lastMsgSnap = await FirebaseFirestore.instance
-                  .collection('Chats')
-                  .doc(doc.id)
-                  .collection('messages')
-                  .orderBy('time', descending: true)
-                  .limit(1)
-                  .get();
-
-              String realLastMessage = 'Message';
-              String? lastMessageMediaType;
-
-              if (lastMsgSnap.docs.isNotEmpty) {
-                final lastMsgData = lastMsgSnap.docs.first.data();
-                final senderId = lastMsgData['senderId'] ?? '';
-
-                final mediaType = lastMsgData['mediaType'];
-
-                if (mediaType != null) {
-                  lastMessageMediaType = mediaType;
-                  switch (mediaType) {
-                    case 'image':
-                      realLastMessage = 'Photo';
-                      break;
-                    case 'video':
-                      realLastMessage = 'Video';
-                      break;
-                    case 'gif':
-                      realLastMessage = 'GIF';
-                      break;
-                    default:
-                      realLastMessage = 'File';
-                  }
-                } else {
-                  final textField = senderId == userId
-                      ? lastMsgData['encryptedSenderCopy']
-                      : lastMsgData['encryptedText'];
-
-                  if (textField != null) {
-                    try {
-                      realLastMessage = await EncryptionService()
-                          .decryptMessage(textField, userId);
-                    } catch (_) {
-                      realLastMessage = 'Message';
-                    }
-                  }
-                }
-              }
-
-              modifiedData['lastMessage'] = realLastMessage;
-              if (lastMessageMediaType != null) {
-                modifiedData['lastMessageMediaType'] = lastMessageMediaType;
-              }
-
-              return ChatContact.fromMap(
-                modifiedData,
-                doc.id,
-                userId,
-                otherUserData,
-              );
-            }),
-          ).then((list) => list.whereType<ChatContact>().toList()),
-          builder: (context, chatSnapshot) {
-            if (chatSnapshot.hasError) {
+        return StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('GroupChats')
+              .where('members', arrayContains: userId)
+              .orderBy('lastMessageTime', descending: true)
+              .snapshots(),
+          builder: (context, groupSnapshot) {
+            if (groupSnapshot.hasError) {
               return Center(
                 child: Text(
-                  'Error: ${chatSnapshot.error}',
+                  'Error: ${groupSnapshot.error}',
                   style: const TextStyle(color: Colors.red),
                 ),
               );
             }
-            if (!chatSnapshot.hasData) {
+
+            final groupChats = groupSnapshot.data?.docs ?? [];
+
+            if (!snapshot.hasData && !groupSnapshot.hasData) {
               return const ChatListLoader();
             }
 
-            final chats = chatSnapshot.data!;
+            if (oneOnOneChats.isEmpty && groupChats.isEmpty) {
+              return const EmptyContactsScreen();
+            }
 
-            if (chats.isEmpty) return const EmptyContactsScreen();
+            return FutureBuilder<List<ChatItem>>(
+              future: _combineChatData(oneOnOneChats, groupChats, userId),
+              builder: (context, combinedSnapshot) {
+                if (combinedSnapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'Error: ${combinedSnapshot.error}',
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  );
+                }
 
-            return ContactsListScreen(contacts: chats);
+                if (!combinedSnapshot.hasData) {
+                  return const ChatListLoader();
+                }
+
+                final chats = combinedSnapshot.data!;
+
+                if (chats.isEmpty) {
+                  return const EmptyContactsScreen();
+                }
+
+                return ContactsListScreen(chats: chats);
+              },
+            );
           },
         );
       },
     );
   }
+
+  Future<List<ChatItem>> _combineChatData(
+    List<QueryDocumentSnapshot> oneOnOneChats,
+    List<QueryDocumentSnapshot> groupChats,
+    String userId,
+  ) async {
+    final List<ChatItem> allChats = [];
+    final encryption = EncryptionService();
+
+    for (final doc in oneOnOneChats) {
+      final data = doc.data() as Map<String, dynamic>;
+      final participants = data['participants'] as List<dynamic>? ?? [];
+
+      if (participants.isEmpty) continue;
+
+      final otherUid = participants.firstWhere(
+        (uid) => uid != userId,
+        orElse: () => null,
+      );
+
+      if (otherUid == null) continue;
+
+      final otherUserDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(otherUid)
+          .get();
+
+      if (!otherUserDoc.exists) continue;
+
+      final otherUserData = otherUserDoc.data() ?? {};
+
+      String realLastMessage = 'Message';
+      String? lastMessageMediaType;
+
+      try {
+        final lastMsgSnap = await FirebaseFirestore.instance
+            .collection('Chats')
+            .doc(doc.id)
+            .collection('messages')
+            .orderBy('time', descending: true)
+            .limit(1)
+            .get();
+
+        if (lastMsgSnap.docs.isNotEmpty) {
+          final lastMsgData = lastMsgSnap.docs.first.data();
+          final senderId = lastMsgData['senderId'] ?? '';
+          final mediaType = lastMsgData['mediaType'];
+
+          if (mediaType != null) {
+            lastMessageMediaType = mediaType;
+            if (mediaType == 'image') {
+              realLastMessage = 'Photo';
+            } else if (mediaType == 'video') {
+              realLastMessage = 'Video';
+            } else if (mediaType == 'gif') {
+              realLastMessage = 'GIF';
+            } else {
+              realLastMessage = 'File';
+            }
+          } else {
+            final textField = senderId == userId
+                ? lastMsgData['encryptedSenderCopy']
+                : lastMsgData['encryptedText'];
+
+            if (textField != null) {
+              try {
+                realLastMessage = await encryption.decryptMessage(
+                  textField,
+                  userId,
+                );
+              } catch (_) {
+                realLastMessage = 'Message';
+              }
+            }
+          }
+        }
+      } catch (e) {
+        print('Error getting last message: $e');
+      }
+
+      allChats.add(
+        ChatItem(
+          chatId: doc.id,
+          name: otherUserData['displayname'] ?? 'Unknown',
+          profilePic: otherUserData['profilePic'] ?? '',
+          lastMessage: realLastMessage,
+          lastMessageMediaType: lastMessageMediaType,
+          lastMessageTime:
+              (data['lastMessageTime'] as Timestamp?)?.toDate() ??
+              DateTime.now(),
+          unreadCount: data['unreadCount_$userId'] ?? 0,
+          chatType: 'oneOnOne',
+          receiverUid: otherUid,
+          members: [],
+        ),
+      );
+    }
+
+    for (final doc in groupChats) {
+      final data = doc.data() as Map<String, dynamic>;
+      final groupName = data['groupName'] ?? 'Group';
+      final groupProfilePic = data['groupProfilePic'] ?? '';
+      final members = (data['members'] as List<dynamic>?) ?? [];
+
+      String lastMessage = data['lastMessagePlain'] ?? 'Message';
+
+      if (data['lastMessagePlain'] == null &&
+          data['lastMessagePlain'] != null) {
+        try {
+          lastMessage = await encryption.decryptMessage(
+            data['lastMessage'],
+            userId,
+          );
+        } catch (_) {
+          lastMessage = 'Message';
+        }
+      }
+
+      final lastMessageMediaType = data['mediaType'];
+
+      allChats.add(
+        ChatItem(
+          chatId: doc.id,
+          name: groupName,
+          profilePic: groupProfilePic,
+          lastMessage: lastMessage,
+          lastMessageMediaType: lastMessageMediaType,
+          lastMessageTime:
+              (data['lastMessageTime'] as Timestamp?)?.toDate() ??
+              DateTime.now(),
+          unreadCount: data['unreadCount_$userId'] ?? 0,
+          chatType: 'group',
+          receiverUid: doc.id,
+          members: members.cast<String>(),
+        ),
+      );
+    }
+
+    allChats.sort((a, b) => b.lastMessageTime.compareTo(a.lastMessageTime));
+
+    return allChats;
+  }
+}
+
+class ChatItem {
+  final String chatId;
+  final String name;
+  final String profilePic;
+  final String lastMessage;
+  final String? lastMessageMediaType;
+  final DateTime lastMessageTime;
+  final int unreadCount;
+  final String chatType;
+  final String receiverUid;
+  final List<String> members;
+
+  ChatItem({
+    required this.chatId,
+    required this.name,
+    required this.profilePic,
+    required this.lastMessage,
+    this.lastMessageMediaType,
+    required this.lastMessageTime,
+    required this.unreadCount,
+    required this.chatType,
+    required this.receiverUid,
+    required this.members,
+  });
 }

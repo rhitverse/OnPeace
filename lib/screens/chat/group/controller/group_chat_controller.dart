@@ -36,7 +36,7 @@ class GroupChatController {
         text: text,
       );
     } catch (e) {
-      return;
+      rethrow;
     }
   }
 

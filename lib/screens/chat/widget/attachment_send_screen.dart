@@ -1,7 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:on_peace/screens/chat/group/controller/group_chat_provider.dart';
 import 'package:video_player/video_player.dart';
 import 'dart:io';
 import 'package:on_peace/colors.dart';
@@ -12,6 +14,7 @@ class AttachmentSendScreen extends ConsumerStatefulWidget {
   final String chatId;
   final String receiverUid;
   final List<FileAttachment>? initialFiles;
+  final bool isGroupChat;
   final Function? onFileUploadStart;
 
   const AttachmentSendScreen({
@@ -19,6 +22,7 @@ class AttachmentSendScreen extends ConsumerStatefulWidget {
     required this.chatId,
     required this.receiverUid,
     this.initialFiles,
+    this.isGroupChat = false,
     this.onFileUploadStart,
   });
 
@@ -127,12 +131,24 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
 
     try {
       final chatController = ref.read(chatControllerProvider);
+      final groupChatController = ref.read(groupChatControllerProvider);
       final pendingNotifier = ref.read(pendingMessagesProvider.notifier);
 
-      // Close the attachment screen immediately
       if (mounted) Navigator.pop(context);
 
-      // Add all files to pending messages first
+      String senderName = '';
+      String senderProfilePic = '';
+
+      if (widget.isGroupChat) {
+        final currentUserData = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUserId)
+            .get();
+
+        senderName = currentUserData.data()?['displayname'] ?? 'Unknown';
+        senderProfilePic = currentUserData.data()?['profilePic'] ?? '';
+      }
+
       for (int i = 0; i < selectedFiles.length; i++) {
         final file = selectedFiles[i];
         final mediaType = _getMediaType(file.fileName);
@@ -143,7 +159,6 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
           duration = await _getVideoDuration(file.filePath);
         }
 
-        // Add to pending messages for instant UI display
         pendingNotifier.addPending(
           PendingMessage(
             tempId: tempId,
@@ -160,7 +175,6 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
         );
       }
 
-      // Upload files in background
       for (int i = 0; i < selectedFiles.length; i++) {
         final file = selectedFiles[i];
         final fileObj = File(file.filePath);
@@ -169,37 +183,67 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
 
         try {
           if (mediaType == 'image') {
-            await chatController.sendImageAndGetId(
-              chatId: widget.chatId,
-              senderId: currentUserId,
-              imageFile: fileObj,
-              receiverId: widget.receiverUid,
-            );
+            if (widget.isGroupChat) {
+              await groupChatController.sendImageAndGetId(
+                groupId: widget.chatId,
+                senderId: currentUserId,
+                senderName: senderName,
+                senderProfilePic: senderProfilePic,
+                imageFile: fileObj,
+              );
+            } else {
+              await chatController.sendImageAndGetId(
+                chatId: widget.chatId,
+                senderId: currentUserId,
+                imageFile: fileObj,
+                receiverId: widget.receiverUid,
+              );
+            }
           } else if (mediaType == 'video') {
             final videoDuration = await _getVideoDuration(file.filePath);
-            await chatController.sendVideoAndGetId(
-              chatId: widget.chatId,
-              senderId: currentUserId,
-              videoFile: fileObj,
-              receiverId: widget.receiverUid,
-              duration: videoDuration,
-            );
+            if (widget.isGroupChat) {
+              await groupChatController.sendVideoAndGetId(
+                groupId: widget.chatId,
+                senderId: currentUserId,
+                senderName: senderName,
+                senderProfilePic: senderProfilePic,
+                videoFile: fileObj,
+                duration: videoDuration,
+              );
+            } else {
+              await chatController.sendVideoAndGetId(
+                chatId: widget.chatId,
+                senderId: currentUserId,
+                videoFile: fileObj,
+                receiverId: widget.receiverUid,
+                duration: videoDuration,
+              );
+            }
           } else {
-            await chatController.sendFileAndGetId(
-              chatId: widget.chatId,
-              senderId: currentUserId,
-              file: fileObj,
-              receiverId: widget.receiverUid,
-              fileType: mediaType,
-            );
+            if (widget.isGroupChat) {
+              await groupChatController.sendFileAndGetId(
+                groupId: widget.chatId,
+                senderId: currentUserId,
+                senderName: senderName,
+                senderProfilePic: senderProfilePic,
+                file: fileObj,
+                fileType: mediaType,
+              );
+            } else {
+              await chatController.sendFileAndGetId(
+                chatId: widget.chatId,
+                senderId: currentUserId,
+                file: fileObj,
+                receiverId: widget.receiverUid,
+                fileType: mediaType,
+              );
+            }
           }
 
-          // Remove from pending after successful upload
           pendingNotifier.removePending(tempId);
           debugPrint('File ${file.fileName} sent successfully!');
         } catch (e) {
           debugPrint('Error sending file ${file.fileName}: $e');
-          // Update pending message status to failed
           pendingNotifier.updateStatus(tempId, 'failed');
         }
       }
@@ -380,14 +424,20 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
 
   IconData _getFileIcon(String fileName) {
     final ext = fileName.split('.').last.toLowerCase();
-    return switch (ext) {
-      'pdf' => Icons.picture_as_pdf,
-      'doc' || 'docx' => Icons.description,
-      'xls' || 'xlsx' => Icons.table_chart,
-      'ppt' || 'pptx' => Icons.slideshow,
-      'zip' || 'rar' => Icons.folder_zip,
-      _ => Icons.insert_drive_file,
-    };
+
+    if (ext == 'pdf') {
+      return Icons.picture_as_pdf;
+    } else if (ext == 'doc' || ext == 'docx') {
+      return Icons.description;
+    } else if (ext == 'xls' || ext == 'xlsx') {
+      return Icons.table_chart;
+    } else if (ext == 'ppt' || ext == 'pptx') {
+      return Icons.slideshow;
+    } else if (ext == 'zip' || ext == 'rar') {
+      return Icons.folder_zip;
+    } else {
+      return Icons.insert_drive_file;
+    }
   }
 
   String _formatFileSize(int bytes) {

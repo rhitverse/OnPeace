@@ -6,7 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:on_peace/colors.dart';
 import 'package:on_peace/screens/calls/controller/call_provider.dart';
-import 'package:on_peace/screens/chat/provider/chat_provider.dart';
+import 'package:on_peace/screens/chat/group/controller/group_chat_provider.dart';
 import 'package:on_peace/screens/chat/provider/pending_messages_provider.dart';
 import 'package:on_peace/screens/chat/widget/bottom_chat_field.dart';
 import 'package:on_peace/screens/chat/widget/chat_loader.dart';
@@ -56,7 +56,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
       final currentUserId = FirebaseAuth.instance.currentUser?.uid;
       if (currentUserId != null) {
         ref
-            .read(chatControllerProvider)
+            .read(groupChatControllerProvider)
             .markAsRead(widget.groupId, currentUserId);
       }
     });
@@ -95,6 +95,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
         .collection('users')
         .doc(currentUserId)
         .get();
+
     final currentUserName =
         currentUserData.data()?['displayname'] ??
         currentUserData.data()?['username'] ??
@@ -105,6 +106,8 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
 
     final messageText = _messageController.text.trim();
     final tempId = DateTime.now().millisecondsSinceEpoch.toString();
+
+    if (!mounted) return;
 
     ref
         .read(pendingMessagesProvider.notifier)
@@ -121,56 +124,39 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
     _messageController.clear();
 
     try {
-      final batch = FirebaseFirestore.instance.batch();
+      if (!mounted) return;
 
-      // Add message to group's messages subcollection
-      final messageRef = FirebaseFirestore.instance
-          .collection('GroupChats')
-          .doc(widget.groupId)
-          .collection('messages')
-          .doc();
-
-      batch.set(messageRef, {
-        'senderId': currentUserId,
-        'senderName': currentUserName,
-        'senderProfilePic': currentUserProfilePic,
-        'text': messageText,
-        'isRead': false,
-        'time': FieldValue.serverTimestamp(),
-      });
-
-      // Update group's last message info
-      final groupRef = FirebaseFirestore.instance
-          .collection('GroupChats')
-          .doc(widget.groupId);
-
-      batch.update(groupRef, {
-        'lastMessage': messageText,
-        'lastMessageTime': FieldValue.serverTimestamp(),
-        'lastMessageSenderId': currentUserId,
-        'lastMessageSenderName': currentUserName,
-      });
-
-      await batch.commit();
-
-      // Remove pending message after successful send
-      ref.read(pendingMessagesProvider.notifier).removePending(tempId);
-    } catch (e) {
-      print('Error sending group message: $e');
-      // Update status to failed
-      ref.read(pendingMessagesProvider.notifier).updateStatus(tempId, 'failed');
+      await ref
+          .read(groupChatControllerProvider)
+          .sendMessage(
+            groupId: widget.groupId,
+            senderId: currentUserId,
+            senderName: currentUserName,
+            senderProfilePic: currentUserProfilePic,
+            text: messageText,
+          );
 
       if (mounted) {
+        ref.read(pendingMessagesProvider.notifier).removePending(tempId);
+      }
+    } catch (e) {
+      if (mounted) {
+        ref
+            .read(pendingMessagesProvider.notifier)
+            .updateStatus(tempId, 'failed');
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to send message: $e'),
+            content: const Text('Failed to send message'),
             action: SnackBarAction(
               label: 'Retry',
               onPressed: () {
-                ref
-                    .read(pendingMessagesProvider.notifier)
-                    .removePending(tempId);
-                _messageController.text = messageText;
+                if (mounted) {
+                  ref
+                      .read(pendingMessagesProvider.notifier)
+                      .removePending(tempId);
+                  _messageController.text = messageText;
+                }
               },
             ),
           ),
@@ -288,54 +274,22 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
       body: Column(
         children: [
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('GroupChats')
-                  .doc(widget.groupId)
-                  .collection('messages')
-                  .orderBy('time', descending: true)
-                  .snapshots(),
+            child: StreamBuilder<List<Map<String, dynamic>>>(
+              stream: ref
+                  .read(groupChatControllerProvider)
+                  .getMessages(widget.groupId),
               builder: (context, snapshot) {
-                final firebaseMessages = <Map<String, dynamic>>[];
-
-                if (snapshot.hasData) {
-                  for (final doc in snapshot.data!.docs) {
-                    final data = doc.data() as Map<String, dynamic>;
-                    // Convert Timestamp to ISO8601 string
-                    String timeStr = '';
-                    try {
-                      if (data['time'] is Timestamp) {
-                        timeStr = (data['time'] as Timestamp)
-                            .toDate()
-                            .toIso8601String();
-                      } else if (data['time'] is String) {
-                        timeStr = data['time'];
-                      }
-                    } catch (_) {
-                      timeStr = DateTime.now().toIso8601String();
-                    }
-
-                    firebaseMessages.add({
-                      'id': doc.id,
-                      ...data,
-                      'time': timeStr,
-                    });
-                  }
-                }
-
+                final firebaseMessages =
+                    (snapshot.hasData ? snapshot.data! : [])
+                        .cast<Map<String, dynamic>>();
                 final pendingMessages = ref.watch(pendingMessagesProvider);
 
-                // Combine Firebase messages and pending messages, filtering out duplicates
                 final allMessages = <Map<String, dynamic>>[];
-
-                // Add Firebase messages
                 allMessages.addAll(firebaseMessages);
 
-                // Add pending messages, but skip ones that already appear in Firebase
                 for (final pm in pendingMessages) {
                   bool isDuplicate = false;
 
-                  // Check if this pending message matches an existing Firebase message
                   try {
                     for (final fbMsg in firebaseMessages) {
                       if (fbMsg['text'] == pm.text &&
@@ -345,7 +299,6 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                           fbMsg['time'] as String? ?? '',
                         );
 
-                        // Match by: sender + timestamp (within 10 seconds)
                         final senderMatch = fbMsg['senderId'] == pm.senderId;
                         final timeMatch =
                             fbTime != null &&
@@ -374,15 +327,20 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                       'text': pm.text,
                       'senderId': pm.senderId,
                       'senderName': 'You',
+                      'senderProfilePic': '',
                       'time': pm.sentTime.toIso8601String(),
                       'isPending': true,
                       'pendingStatus': pm.status,
                       'localFilePath': pm.localFilePath,
+                      'mediaUrl': pm.mediaUrl,
+                      'mediaType': pm.mediaType,
+                      'fileName': pm.fileName,
+                      'fileSize': pm.fileSize,
+                      'duration': pm.duration,
                     });
                   }
                 }
 
-                // Sort by time (latest first)
                 allMessages.sort((a, b) {
                   try {
                     final timeA = DateTime.parse(a['time'] ?? '');
@@ -393,12 +351,10 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                   }
                 });
 
-                // Show loading state if still loading initial data
                 if (!snapshot.hasData && pendingMessages.isEmpty) {
                   return const ChatLoader();
                 }
 
-                // Show loading state if no messages yet
                 if (allMessages.isEmpty) {
                   return const ChatLoader();
                 }
@@ -459,8 +415,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                       if (prev['senderId'] == senderId) {
                         showTail = false;
                         isGrouped = true;
-                        showSenderInfo =
-                            false; // Don't show sender info for grouped messages
+                        showSenderInfo = false;
                       }
 
                       String prevTimeString = '';
@@ -571,6 +526,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
             onSend: _sendMessage,
             chatId: widget.groupId,
             receiverUid: widget.groupId,
+            isGroupChat: true,
           ),
         ],
       ),
