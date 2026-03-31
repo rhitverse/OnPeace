@@ -729,19 +729,41 @@ class GroupChatRepository {
     required List<String> members,
     String groupProfilePic = '',
   }) async {
-    final doc = await _firestore.collection('GroupChats').doc(groupId).get();
-    if (!doc.exists) {
-      await _firestore.collection('GroupChats').doc(groupId).set({
-        'groupName': groupName,
-        'groupProfilePic': groupProfilePic,
-        'members': members,
-        'lastMessage': '',
-        'lastMessageTime': FieldValue.serverTimestamp(),
-        'lastMessageSenderId': '',
-        'lastMessageSenderName': '',
-        'status': 'active',
-        for (var uid in members) 'unreadCount_$uid': 0,
-      });
+    try {
+      debugPrint('Creating group in Firestore...');
+      debugPrint('GroupId: $groupId');
+      debugPrint('GroupName: $groupName');
+      debugPrint('Members: $members');
+      debugPrint('ProfilePic: $groupProfilePic');
+
+      final doc = await _firestore.collection('GroupChats').doc(groupId).get();
+
+      if (!doc.exists) {
+        debugPrint('GroupChats/$groupId does not exist, creating...');
+
+        final groupData = {
+          'groupName': groupName,
+          'groupProfilePic': groupProfilePic,
+          'members': members,
+          'lastMessage': '',
+          'lastMessageTime': FieldValue.serverTimestamp(),
+          'lastMessageSenderId': '',
+          'lastMessageSenderName': '',
+          'status': 'active',
+          for (var uid in members) 'unreadCount_$uid': 0,
+        };
+
+        debugPrint('Setting group data: $groupData');
+
+        await _firestore.collection('GroupChats').doc(groupId).set(groupData);
+
+        debugPrint('Group created successfully in Firestore!');
+      } else {
+        debugPrint('GroupChats/$groupId already exists, skipping creation');
+      }
+    } catch (e) {
+      debugPrint('Error creating group: $e');
+      rethrow;
     }
   }
 

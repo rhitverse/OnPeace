@@ -150,9 +150,7 @@ class _FriendsNewchatState extends State<FriendsNewchat> {
                     ListTile(
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => const AddUserFriend(),
-                        ),
+                        MaterialPageRoute(builder: (_) => AddUserFriend()),
                       ),
                       leading: SvgPicture.asset(
                         "assets/svg/addgroup.svg",

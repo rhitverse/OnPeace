@@ -95,7 +95,10 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
         .collection('users')
         .doc(currentUserId)
         .get();
-    final currentUserName = currentUserData.data()?['displayName'] ?? 'Unknown';
+    final currentUserName =
+        currentUserData.data()?['displayname'] ??
+        currentUserData.data()?['username'] ??
+        'Unknown';
     final currentUserProfilePic = currentUserData.data()?['profilePic'] ?? '';
 
     if (currentUserId == null) return;
@@ -118,29 +121,49 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
     _messageController.clear();
 
     try {
-      await FirebaseFirestore.instance
+      final batch = FirebaseFirestore.instance.batch();
+
+      // Add message to group's messages subcollection
+      final messageRef = FirebaseFirestore.instance
           .collection('GroupChats')
           .doc(widget.groupId)
           .collection('messages')
-          .add({
-            'senderId': currentUserId,
-            'senderName': currentUserName,
-            'senderProfilePic': currentUserProfilePic,
-            'text': messageText,
-            'isRead': false,
-            'time': FieldValue.serverTimestamp(),
-          });
+          .doc();
+
+      batch.set(messageRef, {
+        'senderId': currentUserId,
+        'senderName': currentUserName,
+        'senderProfilePic': currentUserProfilePic,
+        'text': messageText,
+        'isRead': false,
+        'time': FieldValue.serverTimestamp(),
+      });
+
+      // Update group's last message info
+      final groupRef = FirebaseFirestore.instance
+          .collection('GroupChats')
+          .doc(widget.groupId);
+
+      batch.update(groupRef, {
+        'lastMessage': messageText,
+        'lastMessageTime': FieldValue.serverTimestamp(),
+        'lastMessageSenderId': currentUserId,
+        'lastMessageSenderName': currentUserName,
+      });
+
+      await batch.commit();
 
       // Remove pending message after successful send
       ref.read(pendingMessagesProvider.notifier).removePending(tempId);
     } catch (e) {
+      print('Error sending group message: $e');
       // Update status to failed
       ref.read(pendingMessagesProvider.notifier).updateStatus(tempId, 'failed');
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Failed to send message'),
+            content: Text('Failed to send message: $e'),
             action: SnackBarAction(
               label: 'Retry',
               onPressed: () {
@@ -171,19 +194,6 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Group info screen')));
-  }
-
-  String _formatTime(dynamic timeObj) {
-    try {
-      if (timeObj is Timestamp) {
-        return DateFormat('hh:mm a').format(timeObj.toDate());
-      } else if (timeObj is String) {
-        return DateFormat('hh:mm a').format(DateTime.parse(timeObj));
-      }
-      return '';
-    } catch (_) {
-      return '';
-    }
   }
 
   @override
@@ -291,7 +301,25 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                 if (snapshot.hasData) {
                   for (final doc in snapshot.data!.docs) {
                     final data = doc.data() as Map<String, dynamic>;
-                    firebaseMessages.add({'id': doc.id, ...data});
+                    // Convert Timestamp to ISO8601 string
+                    String timeStr = '';
+                    try {
+                      if (data['time'] is Timestamp) {
+                        timeStr = (data['time'] as Timestamp)
+                            .toDate()
+                            .toIso8601String();
+                      } else if (data['time'] is String) {
+                        timeStr = data['time'];
+                      }
+                    } catch (_) {
+                      timeStr = DateTime.now().toIso8601String();
+                    }
+
+                    firebaseMessages.add({
+                      'id': doc.id,
+                      ...data,
+                      'time': timeStr,
+                    });
                   }
                 }
 
@@ -313,19 +341,19 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                       if (fbMsg['text'] == pm.text &&
                           fbMsg['senderId'] == pm.senderId &&
                           fbMsg['time'] != null) {
-                        final fbTime = (fbMsg['time'] is Timestamp)
-                            ? (fbMsg['time'] as Timestamp).toDate()
-                            : DateTime.tryParse(fbMsg['time'].toString());
+                        final fbTime = DateTime.tryParse(
+                          fbMsg['time'] as String? ?? '',
+                        );
 
-                        if (fbTime != null) {
-                          final timeDiff = fbTime
-                              .difference(pm.sentTime)
-                              .inSeconds
-                              .abs();
-                          if (timeDiff < 2) {
-                            isDuplicate = true;
-                            break;
-                          }
+                        // Match by: sender + timestamp (within 10 seconds)
+                        final senderMatch = fbMsg['senderId'] == pm.senderId;
+                        final timeMatch =
+                            fbTime != null &&
+                            pm.sentTime.difference(fbTime).inSeconds.abs() < 10;
+
+                        if (senderMatch && timeMatch) {
+                          isDuplicate = true;
+                          break;
                         }
                       }
                     }
@@ -357,12 +385,8 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                 // Sort by time (latest first)
                 allMessages.sort((a, b) {
                   try {
-                    final timeA = a['time'] is Timestamp
-                        ? (a['time'] as Timestamp).toDate()
-                        : DateTime.parse(a['time'] ?? '');
-                    final timeB = b['time'] is Timestamp
-                        ? (b['time'] as Timestamp).toDate()
-                        : DateTime.parse(b['time'] ?? '');
+                    final timeA = DateTime.parse(a['time'] ?? '');
+                    final timeB = DateTime.parse(b['time'] ?? '');
                     return timeB.compareTo(timeA);
                   } catch (_) {
                     return 0;
@@ -396,6 +420,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                     final text = messageData['text'] ?? '';
                     final timeStr = messageData['time'];
                     final isMe = senderId == currentUserId;
+                    final isPending = messageData['isPending'] ?? false;
+                    final pendingStatus =
+                        messageData['pendingStatus'] ?? 'sending';
 
                     final mediaUrl = messageData['mediaUrl'];
                     final mediaType = messageData['mediaType'];
@@ -403,72 +430,129 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                     final fileSize = messageData['fileSize'];
                     final duration = messageData['duration'];
 
-                    String? prevTime = index < allMessages.length - 1
-                        ? allMessages[index + 1]['time']
-                        : null;
-
-                    DateTime? messageDateTime;
+                    String timeString = '';
+                    DateTime? msgDateTime;
                     try {
-                      messageDateTime = timeStr is Timestamp
-                          ? timeStr.toDate()
-                          : DateTime.parse(timeStr ?? '');
-                    } catch (_) {
-                      messageDateTime = DateTime.now();
+                      if (timeStr is String) {
+                        msgDateTime = DateTime.parse(timeStr);
+                        timeString = DateFormat('h:mm a').format(msgDateTime);
+                      }
+                    } catch (_) {}
+
+                    bool showTail = true;
+                    bool isGrouped = false;
+                    bool showTime = true;
+                    bool showSenderInfo = !isMe;
+
+                    bool showDateChip = false;
+                    if (index == allMessages.length - 1) {
+                      showDateChip = true;
+                    } else {
+                      showDateChip = _isDifferentDay(
+                        timeStr,
+                        allMessages[index + 1]['time'],
+                      );
                     }
 
-                    final showDateChip = _isDifferentDay(timeStr, prevTime);
+                    if (index > 0) {
+                      final prev = allMessages[index - 1];
+                      if (prev['senderId'] == senderId) {
+                        showTail = false;
+                        isGrouped = true;
+                        showSenderInfo =
+                            false; // Don't show sender info for grouped messages
+                      }
+
+                      String prevTimeString = '';
+                      try {
+                        final prevTimeStr = prev['time'];
+                        if (prevTimeStr is String) {
+                          prevTimeString = DateFormat(
+                            'h:mm a',
+                          ).format(DateTime.parse(prevTimeStr));
+                        }
+                      } catch (_) {}
+
+                      if (prev['senderId'] == senderId &&
+                          prevTimeString == timeString) {
+                        showTime = false;
+                      }
+                    }
 
                     return Column(
                       children: [
-                        if (showDateChip) DateChip(dateTime: messageDateTime),
+                        if (showDateChip && msgDateTime != null)
+                          DateChip(dateTime: msgDateTime),
                         if (isMe)
                           SenderMessage(
                             text: text,
+                            time: timeString,
+                            showTail: showTail,
+                            isGrouped: isGrouped,
+                            showTime: showTime,
                             mediaUrl: mediaUrl,
                             mediaType: mediaType,
                             fileName: fileName,
                             fileSize: fileSize,
-                            duration: duration ?? 0,
-                            time: _formatTime(timeStr),
+                            duration: duration,
+                            isLoading: isPending && pendingStatus == 'sending',
                           )
                         else
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                  left: 12,
-                                  bottom: 4,
-                                ),
-                                child: Row(
-                                  children: [
-                                    if (senderProfilePic.isNotEmpty)
-                                      CircleAvatar(
-                                        radius: 16,
-                                        backgroundImage: NetworkImage(
-                                          senderProfilePic,
+                              if (showSenderInfo)
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    left: 12,
+                                    bottom: 4,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      if (senderProfilePic.isNotEmpty)
+                                        CircleAvatar(
+                                          radius: 16,
+                                          backgroundImage: NetworkImage(
+                                            senderProfilePic,
+                                          ),
+                                        )
+                                      else
+                                        CircleAvatar(
+                                          radius: 16,
+                                          backgroundColor: Colors.grey[700],
+                                          child: Text(
+                                            senderName.isNotEmpty
+                                                ? senderName[0].toUpperCase()
+                                                : '?',
+                                            style: const TextStyle(
+                                              color: whiteColor,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        senderName,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.grey,
                                         ),
                                       ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      senderName,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
                               ReceiverMessage(
                                 text: text,
+                                time: showTime ? timeString : '',
+                                showTail: showTail,
+                                isGrouped: isGrouped,
+                                showTime: showTime,
                                 mediaUrl: mediaUrl,
                                 mediaType: mediaType,
                                 fileName: fileName,
                                 fileSize: fileSize,
-                                duration: duration ?? 0,
-                                time: _formatTime(timeStr),
+                                duration: duration,
                               ),
                             ],
                           ),

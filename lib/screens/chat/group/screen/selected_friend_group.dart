@@ -3,31 +3,40 @@ import 'package:flutter_svg/svg.dart';
 import 'package:on_peace/colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'create_group_chat.dart';
 
-class AddUserFriend extends StatefulWidget {
-  const AddUserFriend({super.key});
+class SelectedFriendGroup extends StatefulWidget {
+  final Set<String> initialSelected;
+  final Map<String, Map<String, dynamic>> initialSelectedData;
+  final Function(Set<String>, Map<String, Map<String, dynamic>>) onDone;
+
+  const SelectedFriendGroup({
+    super.key,
+    this.initialSelected = const {},
+    this.initialSelectedData = const {},
+    required this.onDone,
+  });
 
   @override
-  State<AddUserFriend> createState() => _AddUserFriendState();
+  State<SelectedFriendGroup> createState() => _SelectedFriendGroupState();
 }
 
-class _AddUserFriendState extends State<AddUserFriend> {
+class _SelectedFriendGroupState extends State<SelectedFriendGroup> {
   final TextEditingController searchController = TextEditingController();
   String _searchQuery = '';
   bool _showClear = false;
-  Set<String> selectedFriends = {};
-
-  Map<String, Map<String, dynamic>> selectedFriendsData = {};
+  late Set<String> selectedFriends;
+  late Map<String, Map<String, dynamic>> selectedFriendsData;
 
   @override
   void initState() {
+    super.initState();
+    selectedFriends = Set.from(widget.initialSelected);
+    selectedFriendsData = Map.from(widget.initialSelectedData);
     searchController.addListener(() {
       setState(() {
         _showClear = searchController.text.isNotEmpty;
       });
     });
-    super.initState();
   }
 
   @override
@@ -50,34 +59,32 @@ class _AddUserFriendState extends State<AddUserFriend> {
         titleSpacing: 0,
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back_ios),
+          icon: const Icon(Icons.arrow_back_ios, color: whiteColor),
         ),
-        title: const Text(
-          "Choose friends",
-          style: TextStyle(color: whiteColor, fontWeight: FontWeight.bold),
+        title: Text(
+          selectedFriends.isEmpty
+              ? 'Add people'
+              : '${selectedFriends.length} selected',
+          style: const TextStyle(
+            color: whiteColor,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
         ),
-        centerTitle: false,
         actions: [
           TextButton(
             onPressed: selectedFriends.isEmpty
                 ? null
                 : () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => CreateGroupChat(
-                          selectedFriends: selectedFriends,
-                          selectedFriendsData: selectedFriendsData,
-                        ),
-                      ),
-                    );
+                    widget.onDone(selectedFriends, selectedFriendsData);
+                    Navigator.pop(context);
                   },
             child: Text(
-              'Next',
+              'Invite',
               style: TextStyle(
                 color: selectedFriends.isEmpty ? Colors.grey : whiteColor,
                 fontWeight: FontWeight.bold,
-                fontSize: 18,
+                fontSize: 17,
               ),
             ),
           ),
@@ -92,15 +99,15 @@ class _AddUserFriendState extends State<AddUserFriend> {
             )
           : Column(
               children: [
+                // Search bar
                 Container(
                   height: 42,
                   margin: const EdgeInsets.only(
                     left: 12,
                     right: 12,
                     top: 2,
-                    bottom: 12,
+                    bottom: 8,
                   ),
-
                   decoration: BoxDecoration(
                     color: searchBarColor,
                     borderRadius: BorderRadius.circular(12),
@@ -140,91 +147,8 @@ class _AddUserFriendState extends State<AddUserFriend> {
                     ),
                   ),
                 ),
-                if (selectedFriends.isNotEmpty)
-                  SizedBox(
-                    height: 90,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      itemCount: selectedFriends.length,
-                      itemBuilder: (context, index) {
-                        final uid = selectedFriends.elementAt(index);
-                        final data = selectedFriendsData[uid] ?? {};
-                        final name = data['displayname'] ?? 'Unknown';
-                        final profilePic = data['profilePic'] ?? '';
 
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 12),
-                          child: Column(
-                            children: [
-                              Stack(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 26,
-                                    backgroundColor: Colors.grey.shade700,
-                                    backgroundImage: profilePic.isNotEmpty
-                                        ? NetworkImage(profilePic)
-                                        : null,
-                                    child: profilePic.isEmpty
-                                        ? Text(
-                                            name.isNotEmpty
-                                                ? name[0].toUpperCase()
-                                                : '?',
-                                            style: const TextStyle(
-                                              color: whiteColor,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 18,
-                                            ),
-                                          )
-                                        : null,
-                                  ),
-                                  Positioned(
-                                    top: 0,
-                                    right: 0,
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        setState(() {
-                                          selectedFriends.remove(uid);
-                                          selectedFriendsData.remove(uid);
-                                        });
-                                      },
-                                      child: Container(
-                                        width: 18,
-                                        height: 18,
-                                        decoration: const BoxDecoration(
-                                          color: Colors.grey,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(
-                                          Icons.close,
-                                          size: 12,
-                                          color: whiteColor,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              SizedBox(
-                                width: 52,
-                                child: Text(
-                                  name,
-                                  style: const TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 11,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-
+                // Friends list
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
@@ -274,7 +198,7 @@ class _AddUserFriendState extends State<AddUserFriend> {
                         itemCount: friends.length,
                         itemBuilder: (context, index) {
                           final uid = friends[index]['friendUid'];
-                          return _FriendCheckboxTile(
+                          return _FriendTile(
                             key: ValueKey(uid),
                             friendUid: uid,
                             isSelected: selectedFriends.contains(uid),
@@ -296,20 +220,117 @@ class _AddUserFriendState extends State<AddUserFriend> {
                     },
                   ),
                 ),
+
+                // Bottom selected avatars row
+                if (selectedFriends.isNotEmpty)
+                  Container(
+                    decoration: BoxDecoration(
+                      color: backgroundColor,
+                      border: const Border(
+                        top: BorderSide(color: Colors.white12, width: 1),
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    child: SizedBox(
+                      height: 75,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: selectedFriends.length,
+                        itemBuilder: (context, index) {
+                          final uid = selectedFriends.elementAt(index);
+                          final data = selectedFriendsData[uid] ?? {};
+                          final name = data['displayname'] ?? 'Unknown';
+                          final profilePic = data['profilePic'] ?? '';
+
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 12),
+                            child: Column(
+                              children: [
+                                Stack(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 24,
+                                      backgroundColor: Colors.grey.shade700,
+                                      backgroundImage: profilePic.isNotEmpty
+                                          ? NetworkImage(profilePic)
+                                          : null,
+                                      child: profilePic.isEmpty
+                                          ? Text(
+                                              name.isNotEmpty
+                                                  ? name[0].toUpperCase()
+                                                  : '?',
+                                              style: const TextStyle(
+                                                color: whiteColor,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                              ),
+                                            )
+                                          : null,
+                                    ),
+                                    Positioned(
+                                      top: 0,
+                                      right: 0,
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            selectedFriends.remove(uid);
+                                            selectedFriendsData.remove(uid);
+                                          });
+                                        },
+                                        child: Container(
+                                          width: 16,
+                                          height: 16,
+                                          decoration: const BoxDecoration(
+                                            color: Colors.grey,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.close,
+                                            size: 10,
+                                            color: whiteColor,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                SizedBox(
+                                  width: 48,
+                                  child: Text(
+                                    name,
+                                    style: const TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 10,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
               ],
             ),
     );
   }
 }
 
-class _FriendCheckboxTile extends StatefulWidget {
+class _FriendTile extends StatefulWidget {
   final String friendUid;
   final bool isSelected;
   final String searchQuery;
   final Function(String uid, bool isSelected, Map<String, dynamic> userData)
   onSelected;
 
-  const _FriendCheckboxTile({
+  const _FriendTile({
     required this.friendUid,
     required this.isSelected,
     required this.searchQuery,
@@ -318,10 +339,10 @@ class _FriendCheckboxTile extends StatefulWidget {
   });
 
   @override
-  State<_FriendCheckboxTile> createState() => _FriendCheckboxTileState();
+  State<_FriendTile> createState() => _FriendTileState();
 }
 
-class _FriendCheckboxTileState extends State<_FriendCheckboxTile> {
+class _FriendTileState extends State<_FriendTile> {
   late final Stream<DocumentSnapshot> _userStream;
 
   @override
@@ -381,25 +402,21 @@ class _FriendCheckboxTileState extends State<_FriendCheckboxTile> {
               fontSize: 16,
             ),
           ),
-          trailing: GestureDetector(
-            onTap: () =>
-                widget.onSelected(widget.friendUid, !widget.isSelected, data),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 26,
-              height: 26,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: widget.isSelected ? uiColor : Colors.transparent,
-                border: Border.all(
-                  color: widget.isSelected ? uiColor : Colors.grey,
-                  width: 1.3,
-                ),
+          trailing: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: widget.isSelected ? uiColor : Colors.transparent,
+              border: Border.all(
+                color: widget.isSelected ? uiColor : Colors.grey,
+                width: 1.5,
               ),
-              child: widget.isSelected
-                  ? const Icon(Icons.check, color: whiteColor, size: 16)
-                  : null,
             ),
+            child: widget.isSelected
+                ? const Icon(Icons.check, color: whiteColor, size: 16)
+                : null,
           ),
         );
       },
