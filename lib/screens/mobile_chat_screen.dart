@@ -127,11 +127,15 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
             receiverId: widget.receiverUid,
           );
 
-      ref.read(pendingMessagesProvider.notifier).removePending(tempId);
-    } catch (e) {
-      ref.read(pendingMessagesProvider.notifier).updateStatus(tempId, 'failed');
-
       if (mounted) {
+        ref.read(pendingMessagesProvider.notifier).removePending(tempId);
+      }
+    } catch (e) {
+      if (mounted) {
+        ref
+            .read(pendingMessagesProvider.notifier)
+            .updateStatus(tempId, 'failed');
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Failed to send message'),

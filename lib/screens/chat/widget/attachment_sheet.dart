@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:on_peace/screens/chat/group/controller/group_chat_controller.dart';
 import 'package:on_peace/screens/chat/group/controller/group_chat_provider.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:on_peace/colors.dart';
@@ -235,6 +236,7 @@ class _AttachmentSheetState extends ConsumerState<AttachmentSheet>
           receiverUid: receiverUid,
           currentUid: currentUid,
           chatController: chatController,
+          groupChatController: groupChatController,
           uploadingNotifier: uploadingNotifier,
           pendingNotifier: pendingNotifier,
           isGroupChat: widget.isGroupChat,
@@ -251,13 +253,13 @@ class _AttachmentSheetState extends ConsumerState<AttachmentSheet>
     required String receiverUid,
     required String currentUid,
     required ChatController chatController,
+    required GroupChatController groupChatController,
     required UploadingMessagesNotifier uploadingNotifier,
     required PendingMessagesNotifier pendingNotifier,
     required bool isGroupChat,
   }) async {
     try {
       if (isGroupChat) {
-        final groupChatController = ref.read(groupChatControllerProvider);
         final currentUserData = await FirebaseFirestore.instance
             .collection('users')
             .doc(currentUid)
@@ -276,7 +278,7 @@ class _AttachmentSheetState extends ConsumerState<AttachmentSheet>
         } else if (task.mediaType == 'video') {
           await groupChatController.sendVideo(
             groupId: chatId,
-            senderId: chatId,
+            senderId: currentUid,
             senderName: senderName,
             senderProfilePic: senderProfilePic,
             videoFile: task.file,

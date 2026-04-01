@@ -86,7 +86,6 @@ class GroupChatRepository {
         });
   }
 
-  /// Send Text Message
   Future<void> sendMessage({
     required String groupId,
     required String senderId,
@@ -115,12 +114,12 @@ class GroupChatRepository {
             'senderName': senderName,
             'senderProfilePic': senderProfilePic,
             'encryptedText': encryptedText,
-            'plainText': text,
+            'plainText': encryptedText,
             'isRead': false,
             'time': FieldValue.serverTimestamp(),
           });
 
-      await _updateLastMessage(groupId, senderId, senderName, 'Message');
+      await _updateLastMessage(groupId, senderId, senderName, text);
     } catch (e) {
       debugPrint('Send group message error: $e');
       rethrow;
@@ -523,7 +522,6 @@ class GroupChatRepository {
     }
   }
 
-  /// Send GIF
   Future<void> sendGif({
     required String groupId,
     required String senderId,

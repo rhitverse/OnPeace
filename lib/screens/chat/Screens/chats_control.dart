@@ -190,22 +190,63 @@ class ChatControl extends ConsumerWidget {
       final groupName = data['groupName'] ?? 'Group';
       final groupProfilePic = data['groupProfilePic'] ?? '';
       final members = (data['members'] as List<dynamic>?) ?? [];
+      String lastMessage = 'Message';
+      String? lastMessageMediaType;
 
-      String lastMessage = data['lastMessagePlain'] ?? 'Message';
+      try {
+        final lastMsgSnap = await FirebaseFirestore.instance
+            .collection('GroupChats')
+            .doc(doc.id)
+            .collection('messages')
+            .orderBy('time', descending: true)
+            .limit(1)
+            .get();
 
-      if (data['lastMessagePlain'] == null &&
-          data['lastMessagePlain'] != null) {
-        try {
-          lastMessage = await encryption.decryptMessage(
-            data['lastMessage'],
-            userId,
-          );
-        } catch (_) {
-          lastMessage = 'Message';
+        if (lastMsgSnap.docs.isNotEmpty) {
+          final lastMsgData = lastMsgSnap.docs.first.data();
+          final mediaType = lastMsgData['mediaType'];
+
+          if (mediaType != null) {
+            lastMessageMediaType = mediaType;
+            if (mediaType == 'image') {
+              lastMessage = 'Photo';
+            } else if (mediaType == 'video') {
+              lastMessage = 'Video';
+            } else if (mediaType == 'gif') {
+              lastMessage = 'GIF';
+            } else {
+              lastMessage = 'File';
+            }
+          } else {
+            // Text message - decrypt plainText
+            if (lastMsgData['plainText'] != null) {
+              try {
+                lastMessage = await encryption.decryptMessage(
+                  lastMsgData['plainText'],
+                  userId,
+                );
+              } catch (_) {
+                lastMessage = 'Message';
+              }
+            }
+          }
+        } else {
+          // Fallback
+          if (data['lastMessagePlain'] != null) {
+            try {
+              lastMessage = await encryption.decryptMessage(
+                data['lastMessagePlain'],
+                userId,
+              );
+            } catch (_) {
+              lastMessage = 'Message';
+            }
+          }
         }
+      } catch (e) {
+        print('Error getting last message: $e');
+        lastMessage = 'Message';
       }
-
-      final lastMessageMediaType = data['mediaType'];
 
       allChats.add(
         ChatItem(
