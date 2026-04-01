@@ -8,6 +8,7 @@ import 'package:on_peace/colors.dart';
 import 'package:on_peace/screens/calls/controller/call_provider.dart';
 import 'package:on_peace/screens/chat/group/controller/group_chat_provider.dart';
 import 'package:on_peace/screens/chat/provider/pending_messages_provider.dart';
+import 'package:on_peace/screens/chat/provider/uploading_messages_provider.dart';
 import 'package:on_peace/screens/chat/widget/bottom_chat_field.dart';
 import 'package:on_peace/screens/chat/widget/chat_loader.dart';
 import 'package:on_peace/screens/chat/widget/date_chip.dart';
@@ -96,10 +97,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
         .doc(currentUserId)
         .get();
 
-    final currentUserName =
-        currentUserData.data()?['displayname'] ??
-        currentUserData.data()?['username'] ??
-        'Unknown';
+    final currentUserName = currentUserData.data()?['displayname'] ?? 'Unknown';
     final currentUserProfilePic = currentUserData.data()?['profilePic'] ?? '';
 
     if (currentUserId == null) return;
@@ -185,6 +183,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
   @override
   Widget build(BuildContext context) {
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    final uploadingMessages = ref.watch(uploadingMessagesProvider);
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -292,22 +291,24 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
 
                   try {
                     for (final fbMsg in firebaseMessages) {
-                      if (fbMsg['text'] == pm.text &&
-                          fbMsg['senderId'] == pm.senderId &&
-                          fbMsg['time'] != null) {
-                        final fbTime = DateTime.tryParse(
-                          fbMsg['time'] as String? ?? '',
-                        );
+                      final fbTime = DateTime.tryParse(
+                        fbMsg['time'] as String? ?? '',
+                      );
 
-                        final senderMatch = fbMsg['senderId'] == pm.senderId;
-                        final timeMatch =
-                            fbTime != null &&
-                            pm.sentTime.difference(fbTime).inSeconds.abs() < 10;
+                      final senderMatch = fbMsg['senderId'] == pm.senderId;
+                      final mediaTypeMatch = fbMsg['mediaType'] == pm.mediaType;
 
-                        if (senderMatch && timeMatch) {
-                          isDuplicate = true;
-                          break;
-                        }
+                      final fileNameMatch =
+                          pm.fileName != null &&
+                          fbMsg['fileName'] == pm.fileName;
+                      final timeMatch =
+                          fbTime != null &&
+                          pm.sentTime.difference(fbTime).inSeconds.abs() < 10;
+
+                      if (senderMatch && mediaTypeMatch && fileNameMatch ||
+                          timeMatch) {
+                        isDuplicate = true;
+                        break;
                       }
                     }
                   } catch (_) {}
@@ -386,6 +387,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                     final fileSize = messageData['fileSize'];
                     final duration = messageData['duration'];
 
+                    final messageId = messageData['id'] ?? '';
+                    final isLoading = uploadingMessages.contains(messageId);
+
                     String timeString = '';
                     DateTime? msgDateTime;
                     try {
@@ -450,7 +454,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                             fileName: fileName,
                             fileSize: fileSize,
                             duration: duration,
-                            isLoading: isPending && pendingStatus == 'sending',
+                            isLoading:
+                                isLoading ||
+                                (isPending && pendingStatus == 'sending'),
                           )
                         else
                           Column(

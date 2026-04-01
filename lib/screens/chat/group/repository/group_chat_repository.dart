@@ -444,7 +444,6 @@ class GroupChatRepository {
     }
   }
 
-  /// Send File & Get ID
   Future<String?> sendFileAndGetId({
     required String groupId,
     required String senderId,
@@ -564,6 +563,67 @@ class GroupChatRepository {
       debugPrint('GIF sent successfully');
     } catch (e) {
       debugPrint('Send group GIF error: $e');
+      rethrow;
+    }
+  }
+
+  /// Send Audio
+  Future<void> sendAudio({
+    required String groupId,
+    required String senderId,
+    required String senderName,
+    required String senderProfilePic,
+    required File audioFile,
+    required int duration,
+  }) async {
+    try {
+      debugPrint('Starting group audio upload...');
+      await _createGroupIfNotExists(groupId);
+
+      final mediaUrl = await _cloudinaryRepository.storeFileToCloudinary(
+        audioFile,
+      );
+
+      if (mediaUrl == null) {
+        throw Exception('Failed to upload audio to Cloudinary');
+      }
+
+      final fileSize = await audioFile.length();
+      final fileName = audioFile.path.split('/').last;
+
+      String encryptedUrl = mediaUrl;
+      final senderPublicKey =
+          (await _firestore.collection('users').doc(senderId).get())
+              .data()?['publicKey'];
+
+      if (senderPublicKey != null) {
+        encryptedUrl = await _encryption.encryptMessage(
+          mediaUrl,
+          senderPublicKey,
+        );
+      }
+
+      await _firestore
+          .collection('GroupChats')
+          .doc(groupId)
+          .collection('messages')
+          .add({
+            'senderId': senderId,
+            'senderName': senderName,
+            'senderProfilePic': senderProfilePic,
+            'mediaUrl': encryptedUrl,
+            'mediaType': 'audio',
+            'fileName': fileName,
+            'fileSize': fileSize,
+            'duration': duration,
+            'isRead': false,
+            'time': FieldValue.serverTimestamp(),
+          });
+
+      await _updateLastMessage(groupId, senderId, senderName, '🎵 Audio');
+      debugPrint('Audio message sent successfully');
+    } catch (e) {
+      debugPrint('Send group audio error: $e');
       rethrow;
     }
   }

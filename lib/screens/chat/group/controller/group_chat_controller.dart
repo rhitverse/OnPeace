@@ -226,6 +226,28 @@ class GroupChatController {
     }
   }
 
+  Future<void> sendAudio({
+    required String groupId,
+    required String senderId,
+    required String senderName,
+    required String senderProfilePic,
+    required File audioFile,
+    required int duration,
+  }) async {
+    try {
+      await _groupChatRepository.sendAudio(
+        groupId: groupId,
+        senderId: senderId,
+        senderName: senderName,
+        senderProfilePic: senderProfilePic,
+        audioFile: audioFile,
+        duration: duration,
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<void> markAsRead(String groupId, String userId) async {
     try {
       await _groupChatRepository.markAsRead(groupId, userId);
