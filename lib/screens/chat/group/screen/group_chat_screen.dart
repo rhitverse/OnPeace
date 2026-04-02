@@ -356,156 +356,148 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                   return const ChatLoader();
                 }
 
-                if (allMessages.isEmpty) {
-                  return const ChatLoader();
-                }
+                if (allMessages.isEmpty) {}
 
-                return ListView.builder(
-                  controller: _scrollController,
-                  reverse: true,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  itemCount: allMessages.length,
-                  itemBuilder: (context, index) {
-                    final messageData = allMessages[index];
-                    final senderId = messageData['senderId'] ?? '';
-                    final senderName = messageData['senderName'] ?? '';
-                    final senderProfilePic =
-                        messageData['senderProfilePic'] ?? '';
-                    final text = messageData['text'] ?? '';
-                    final timeStr = messageData['time'];
-                    final isMe = senderId == currentUserId;
-                    final isPending = messageData['isPending'] ?? false;
-                    final pendingStatus =
-                        messageData['pendingStatus'] ?? 'sending';
+                return FutureBuilder<Map<String, dynamic>?>(
+                  future: ref
+                      .read(groupChatControllerProvider)
+                      .getGroupInfo(widget.groupId),
+                  builder: (context, groupInfoSnapshot) {
+                    final groupInfo = groupInfoSnapshot.data;
+                    final creatorName = groupInfo?['creatorName'] ?? 'Unknown';
+                    final createdAt = groupInfo?['createdAt'];
 
-                    final mediaUrl = messageData['mediaUrl'];
-                    final mediaType = messageData['mediaType'];
-                    final fileName = messageData['fileName'];
-                    final fileSize = messageData['fileSize'];
-                    final duration = messageData['duration'];
-
-                    final messageId = messageData['id'] ?? '';
-                    final isLoading = uploadingMessages.contains(messageId);
-
-                    String timeString = '';
-                    DateTime? msgDateTime;
-                    try {
-                      if (timeStr is String) {
-                        msgDateTime = DateTime.parse(timeStr);
-                        timeString = DateFormat('h:mm a').format(msgDateTime);
-                      }
-                    } catch (_) {}
-
-                    bool showTail = true;
-                    bool isGrouped = false;
-                    bool showTime = true;
-                    bool showSenderInfo = !isMe;
-
-                    bool showDateChip = false;
-                    if (index == allMessages.length - 1) {
-                      showDateChip = true;
-                    } else {
-                      showDateChip = _isDifferentDay(
-                        timeStr,
-                        allMessages[index + 1]['time'],
-                      );
-                    }
-
-                    if (index > 0) {
-                      final prev = allMessages[index - 1];
-                      if (prev['senderId'] == senderId) {
-                        showTail = false;
-                        isGrouped = true;
-                        showSenderInfo = false;
-                      }
-
-                      String prevTimeString = '';
+                    String creationDateStr = '';
+                    if (createdAt != null) {
                       try {
-                        final prevTimeStr = prev['time'];
-                        if (prevTimeStr is String) {
-                          prevTimeString = DateFormat(
-                            'h:mm a',
-                          ).format(DateTime.parse(prevTimeStr));
-                        }
+                        final createdDateTime = (createdAt as Timestamp)
+                            .toDate();
+                        creationDateStr = DateFormat(
+                          'd MMM yyyy',
+                        ).format(createdDateTime);
                       } catch (_) {}
-
-                      if (prev['senderId'] == senderId &&
-                          prevTimeString == timeString) {
-                        showTime = false;
-                      }
                     }
 
-                    return Column(
-                      children: [
-                        if (showDateChip && msgDateTime != null)
-                          DateChip(dateTime: msgDateTime),
-                        if (isMe)
-                          SenderMessage(
-                            text: text,
-                            time: timeString,
-                            showTail: showTail,
-                            isGrouped: isGrouped,
-                            showTime: showTime,
-                            mediaUrl: mediaUrl,
-                            mediaType: mediaType,
-                            fileName: fileName,
-                            fileSize: fileSize,
-                            duration: duration,
-                            isLoading:
-                                isLoading ||
-                                (isPending && pendingStatus == 'sending'),
-                          )
-                        else
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (showSenderInfo)
-                                Padding(
-                                  padding: const EdgeInsets.only(
-                                    left: 12,
-                                    bottom: 4,
+                    return ListView.builder(
+                      controller: _scrollController,
+                      reverse: true,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      itemCount: allMessages.length + 1,
+                      itemBuilder: (context, index) {
+                        // Show group creation info at the bottom (which appears at top due to reverse=true)
+                        if (index == allMessages.length) {
+                          return Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    'Group created by $creatorName',
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
-                                  child: Row(
-                                    children: [
-                                      if (senderProfilePic.isNotEmpty)
-                                        CircleAvatar(
-                                          radius: 16,
-                                          backgroundImage: NetworkImage(
-                                            senderProfilePic,
-                                          ),
-                                        )
-                                      else
-                                        CircleAvatar(
-                                          radius: 16,
-                                          backgroundColor: Colors.grey[700],
-                                          child: Text(
-                                            senderName.isNotEmpty
-                                                ? senderName[0].toUpperCase()
-                                                : '?',
-                                            style: const TextStyle(
-                                              color: whiteColor,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        senderName,
+                                  if (creationDateStr.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: Text(
+                                        creationDateStr,
                                         style: const TextStyle(
                                           fontSize: 12,
-                                          fontWeight: FontWeight.w600,
                                           color: Colors.grey,
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                ),
-                              ReceiverMessage(
+                                    ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+
+                        final messageData = allMessages[index];
+                        final senderId = messageData['senderId'] ?? '';
+                        final senderName = messageData['senderName'] ?? '';
+                        final senderProfilePic =
+                            messageData['senderProfilePic'] ?? '';
+                        final text = messageData['text'] ?? '';
+                        final timeStr = messageData['time'];
+                        final isMe = senderId == currentUserId;
+                        final isPending = messageData['isPending'] ?? false;
+                        final pendingStatus =
+                            messageData['pendingStatus'] ?? 'sending';
+
+                        final mediaUrl = messageData['mediaUrl'];
+                        final mediaType = messageData['mediaType'];
+                        final fileName = messageData['fileName'];
+                        final fileSize = messageData['fileSize'];
+                        final duration = messageData['duration'];
+
+                        final messageId = messageData['id'] ?? '';
+                        final isLoading = uploadingMessages.contains(messageId);
+
+                        String timeString = '';
+                        DateTime? msgDateTime;
+                        try {
+                          if (timeStr is String) {
+                            msgDateTime = DateTime.parse(timeStr);
+                            timeString = DateFormat(
+                              'h:mm a',
+                            ).format(msgDateTime);
+                          }
+                        } catch (_) {}
+
+                        bool showTail = true;
+                        bool isGrouped = false;
+                        bool showTime = true;
+                        bool showSenderInfo = !isMe;
+
+                        bool showDateChip = false;
+                        if (index == allMessages.length - 1) {
+                          showDateChip = true;
+                        } else {
+                          showDateChip = _isDifferentDay(
+                            timeStr,
+                            allMessages[index + 1]['time'],
+                          );
+                        }
+
+                        if (index > 0) {
+                          final prev = allMessages[index - 1];
+                          if (prev['senderId'] == senderId) {
+                            showTail = false;
+                            isGrouped = true;
+                            showSenderInfo = false;
+                          }
+
+                          String prevTimeString = '';
+                          try {
+                            final prevTimeStr = prev['time'];
+                            if (prevTimeStr is String) {
+                              prevTimeString = DateFormat(
+                                'h:mm a',
+                              ).format(DateTime.parse(prevTimeStr));
+                            }
+                          } catch (_) {}
+
+                          if (prev['senderId'] == senderId &&
+                              prevTimeString == timeString) {
+                            showTime = false;
+                          }
+                        }
+
+                        return Column(
+                          children: [
+                            if (showDateChip && msgDateTime != null)
+                              DateChip(dateTime: msgDateTime),
+                            if (isMe)
+                              SenderMessage(
                                 text: text,
-                                time: showTime ? timeString : '',
+                                time: timeString,
                                 showTail: showTail,
                                 isGrouped: isGrouped,
                                 showTime: showTime,
@@ -514,10 +506,73 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                                 fileName: fileName,
                                 fileSize: fileSize,
                                 duration: duration,
+                                isLoading:
+                                    isLoading ||
+                                    (isPending && pendingStatus == 'sending'),
+                              )
+                            else
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (showSenderInfo)
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        left: 12,
+                                        bottom: 4,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          if (senderProfilePic.isNotEmpty)
+                                            CircleAvatar(
+                                              radius: 16,
+                                              backgroundImage: NetworkImage(
+                                                senderProfilePic,
+                                              ),
+                                            )
+                                          else
+                                            CircleAvatar(
+                                              radius: 16,
+                                              backgroundColor: Colors.grey[700],
+                                              child: Text(
+                                                senderName.isNotEmpty
+                                                    ? senderName[0]
+                                                          .toUpperCase()
+                                                    : '?',
+                                                style: const TextStyle(
+                                                  color: whiteColor,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            senderName,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ReceiverMessage(
+                                    text: text,
+                                    time: showTime ? timeString : '',
+                                    showTail: showTail,
+                                    isGrouped: isGrouped,
+                                    showTime: showTime,
+                                    mediaUrl: mediaUrl,
+                                    mediaType: mediaType,
+                                    fileName: fileName,
+                                    fileSize: fileSize,
+                                    duration: duration,
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                      ],
+                          ],
+                        );
+                      },
                     );
                   },
                 );

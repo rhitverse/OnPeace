@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:on_peace/screens/chat/group/repository/group_chat_repository.dart';
 
@@ -261,6 +262,8 @@ class GroupChatController {
     required String groupName,
     required List<String> members,
     String groupProfilePic = '',
+    String? creatorId,
+    String? creatorName,
   }) async {
     try {
       await _groupChatRepository.createGroupChat(
@@ -268,6 +271,8 @@ class GroupChatController {
         groupName: groupName,
         members: members,
         groupProfilePic: groupProfilePic,
+        creatorId: creatorId,
+        creatorName: creatorName,
       );
     } catch (e) {
       rethrow;
@@ -299,6 +304,15 @@ class GroupChatController {
       );
     } catch (e) {
       rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>?> getGroupInfo(String groupId) async {
+    try {
+      return await _groupChatRepository.getGroupInfo(groupId);
+    } catch (e) {
+      debugPrint('Error getting group info: $e');
+      return null;
     }
   }
 }

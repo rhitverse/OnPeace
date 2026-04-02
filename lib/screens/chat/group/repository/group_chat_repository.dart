@@ -772,11 +772,16 @@ class GroupChatRepository {
     required String groupName,
     required List<String> members,
     String groupProfilePic = '',
+    String? creatorId,
+    String? creatorName,
   }) async {
     try {
       final doc = await _firestore.collection('GroupChats').doc(groupId).get();
 
       if (!doc.exists) {
+        final finalCreatorId =
+            creatorId ?? FirebaseAuth.instance.currentUser?.uid;
+
         await _firestore.collection('GroupChats').doc(groupId).set({
           'groupName': groupName,
           'groupProfilePic': groupProfilePic,
@@ -786,6 +791,9 @@ class GroupChatRepository {
           'lastMessageSenderId': '',
           'lastMessageSenderName': '',
           'status': 'active',
+          'creatorId': finalCreatorId,
+          'creatorName': creatorName ?? 'Unknown',
+          'createdAt': FieldValue.serverTimestamp(),
           for (var uid in members) 'unreadCount_$uid': 0,
         });
 
@@ -816,6 +824,20 @@ class GroupChatRepository {
     await _firestore.collection('GroupChats').doc(groupId).update({
       'members': FieldValue.arrayRemove([memberId]),
     });
+  }
+
+  /// Get Group Info
+  Future<Map<String, dynamic>?> getGroupInfo(String groupId) async {
+    try {
+      final doc = await _firestore.collection('GroupChats').doc(groupId).get();
+      if (doc.exists) {
+        return doc.data();
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error fetching group info: $e');
+      return null;
+    }
   }
 
   // Helper Methods

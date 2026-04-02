@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:on_peace/colors.dart';
@@ -140,6 +141,13 @@ class _CreateGroupChatState extends ConsumerState<CreateGroupChat> {
       final allMembers = [..._selectedFriends, currentUserId];
       print('All members: $allMembers');
 
+      // Get creator name
+      final currentUserDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUserId)
+          .get();
+      final creatorName = currentUserDoc.data()?['displayname'] ?? 'Unknown';
+
       // Create group using controller
       final groupChatController = ref.read(groupChatControllerProvider);
 
@@ -149,6 +157,8 @@ class _CreateGroupChatState extends ConsumerState<CreateGroupChat> {
         groupName: finalName,
         members: allMembers,
         groupProfilePic: groupProfilePic,
+        creatorId: currentUserId,
+        creatorName: creatorName,
       );
       print('Group created successfully in Firestore!');
 
