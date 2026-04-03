@@ -774,6 +774,7 @@ class GroupChatRepository {
     String groupProfilePic = '',
     String? creatorId,
     String? creatorName,
+    String creatorProfilePic = '',
   }) async {
     try {
       final doc = await _firestore.collection('GroupChats').doc(groupId).get();
@@ -781,6 +782,7 @@ class GroupChatRepository {
       if (!doc.exists) {
         final finalCreatorId =
             creatorId ?? FirebaseAuth.instance.currentUser?.uid;
+        final finalCreatorName = creatorName ?? 'Unknown';
 
         await _firestore.collection('GroupChats').doc(groupId).set({
           'groupName': groupName,
@@ -792,7 +794,8 @@ class GroupChatRepository {
           'lastMessageSenderName': '',
           'status': 'active',
           'creatorId': finalCreatorId,
-          'creatorName': creatorName ?? 'Unknown',
+          'creatorName': finalCreatorName,
+          'creatorProfilePic': creatorProfilePic,
           'createdAt': FieldValue.serverTimestamp(),
           for (var uid in members) 'unreadCount_$uid': 0,
         });
@@ -880,8 +883,8 @@ class GroupChatRepository {
       }
 
       await _firestore.collection('GroupChats').doc(groupId).update({
-        'lastMessage': encryptedMessage, // Encrypted in Firebase
-        'lastMessagePlain': message, // Plain text for UI display
+        'lastMessage': encryptedMessage,
+        'lastMessagePlain': encryptedMessage,
         'lastMessageTime': FieldValue.serverTimestamp(),
         'lastMessageSenderId': senderId,
         'lastMessageSenderName': senderName,

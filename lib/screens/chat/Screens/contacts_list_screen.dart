@@ -22,7 +22,6 @@ class ContactsListScreen extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             onTap: () {
-              // Navigate based on chat type
               if (chat.chatType == 'group') {
                 Navigator.of(context).push(
                   MaterialPageRoute(
@@ -53,7 +52,6 @@ class ContactsListScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 children: [
-                  // Avatar
                   CircleAvatar(
                     radius: 30,
                     backgroundColor: Colors.grey[800],
@@ -75,7 +73,6 @@ class ContactsListScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Name and Time
                         Row(
                           children: [
                             Expanded(
@@ -107,7 +104,6 @@ class ContactsListScreen extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 4),
-                        // Last Message
                         Row(
                           children: [
                             if (chat.lastMessageMediaType != null)
@@ -133,7 +129,6 @@ class ContactsListScreen extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            // Unread Badge
                             if (chat.unreadCount > 0)
                               Container(
                                 margin: const EdgeInsets.only(left: 6),
@@ -177,6 +172,12 @@ class ContactsListScreen extends StatelessWidget {
         );
       case 'gif':
         return const Icon(Icons.gif_box_outlined, size: 20, color: Colors.grey);
+      case 'audio':
+        return const Icon(
+          Icons.audio_file_rounded,
+          size: 20,
+          color: Colors.red,
+        );
       default:
         return const Icon(Icons.attachment, size: 20, color: Colors.grey);
     }

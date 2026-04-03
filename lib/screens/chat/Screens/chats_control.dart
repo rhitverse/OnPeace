@@ -143,6 +143,8 @@ class ChatControl extends ConsumerWidget {
               realLastMessage = 'Video';
             } else if (mediaType == 'gif') {
               realLastMessage = 'GIF';
+            } else if (mediaType == 'audio') {
+              realLastMessage = 'Mp3';
             } else {
               realLastMessage = 'File';
             }
@@ -190,7 +192,7 @@ class ChatControl extends ConsumerWidget {
       final groupName = data['groupName'] ?? 'Group';
       final groupProfilePic = data['groupProfilePic'] ?? '';
       final members = (data['members'] as List<dynamic>?) ?? [];
-      String lastMessage = 'Message';
+      String lastMessage = '';
       String? lastMessageMediaType;
 
       try {
@@ -214,24 +216,25 @@ class ChatControl extends ConsumerWidget {
               lastMessage = 'Video';
             } else if (mediaType == 'gif') {
               lastMessage = 'GIF';
+            } else if (mediaType == 'audio') {
+              lastMessage = 'Mp3';
             } else {
               lastMessage = 'File';
             }
           } else {
-            // Text message - decrypt plainText
-            if (lastMsgData['plainText'] != null) {
+            final plainText = lastMsgData['plainText'];
+            if (plainText != null) {
               try {
                 lastMessage = await encryption.decryptMessage(
                   lastMsgData['plainText'],
                   userId,
                 );
               } catch (_) {
-                lastMessage = 'Message';
+                lastMessage = '';
               }
             }
           }
         } else {
-          // Fallback
           if (data['lastMessagePlain'] != null) {
             try {
               lastMessage = await encryption.decryptMessage(
@@ -239,13 +242,13 @@ class ChatControl extends ConsumerWidget {
                 userId,
               );
             } catch (_) {
-              lastMessage = 'Message';
+              lastMessage = '';
             }
           }
         }
       } catch (e) {
         print('Error getting last message: $e');
-        lastMessage = 'Message';
+        lastMessage = '';
       }
 
       allChats.add(

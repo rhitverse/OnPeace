@@ -264,6 +264,7 @@ class GroupChatController {
     String groupProfilePic = '',
     String? creatorId,
     String? creatorName,
+    String creatorProfilePic = '',
   }) async {
     try {
       await _groupChatRepository.createGroupChat(
@@ -273,6 +274,7 @@ class GroupChatController {
         groupProfilePic: groupProfilePic,
         creatorId: creatorId,
         creatorName: creatorName,
+        creatorProfilePic: creatorProfilePic,
       );
     } catch (e) {
       rethrow;

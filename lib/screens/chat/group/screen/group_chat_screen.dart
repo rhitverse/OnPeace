@@ -97,7 +97,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
         .doc(currentUserId)
         .get();
 
-    final currentUserName = currentUserData.data()?['displayname'] ?? 'Unknown';
+    final currentUserName = currentUserData.data()?['displayname'] ?? '';
     final currentUserProfilePic = currentUserData.data()?['profilePic'] ?? '';
 
     if (currentUserId == null) return;
@@ -387,7 +387,6 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                       ),
                       itemCount: allMessages.length + 1,
                       itemBuilder: (context, index) {
-                        // Show group creation info at the bottom (which appears at top due to reverse=true)
                         if (index == allMessages.length) {
                           return Center(
                             child: Padding(

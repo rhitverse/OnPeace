@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:on_peace/screens/chat/group/screen/selected_friend_group.dart';
 import 'package:on_peace/screens/chat/group/controller/group_chat_provider.dart';
 import 'package:on_peace/common/utils/common_cloudinary_repository.dart';
+import 'package:on_peace/screens/settings/widget/image_crop_helper.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:uuid/uuid.dart';
 
@@ -53,9 +54,14 @@ class _CreateGroupChatState extends ConsumerState<CreateGroupChat> {
       source: ImageSource.gallery,
     );
     if (image != null) {
-      setState(() {
-        _selectedImage = File(image.path);
-      });
+      final croppedFile = await ImageCropHelper.cropProfilePic(
+        File(image.path),
+      );
+      if (croppedFile != null) {
+        setState(() {
+          _selectedImage = croppedFile;
+        });
+      }
     }
   }
 
@@ -87,12 +93,12 @@ class _CreateGroupChatState extends ConsumerState<CreateGroupChat> {
     }
 
     final finalName = groupNameController.text.isEmpty
-        ? (widget.selectedFriendsData.values
+        ? (_selectedFriendsData.values
                   .map((data) => data['displayname'] ?? 'Unknown')
                   .take(2)
                   .join(', ') +
-              (widget.selectedFriendsData.length > 2
-                  ? ' & ${widget.selectedFriendsData.length - 2} more'
+              (_selectedFriendsData.length > 2
+                  ? ' & ${_selectedFriendsData.length - 2} more'
                   : ''))
         : groupNameController.text;
 
@@ -118,7 +124,6 @@ class _CreateGroupChatState extends ConsumerState<CreateGroupChat> {
       print('Members: ${_selectedFriends.length + 1}');
       print('Current user: $currentUserId');
 
-      // Upload image if selected
       String groupProfilePic = '';
       if (_selectedImage != null) {
         print('Uploading group image...');
@@ -132,21 +137,20 @@ class _CreateGroupChatState extends ConsumerState<CreateGroupChat> {
         }
       }
 
-      // Generate unique group ID
       const uuid = Uuid();
       final groupId = uuid.v4();
       print('Generated groupId: $groupId');
 
-      // Add current user to members list
       final allMembers = [..._selectedFriends, currentUserId];
       print('All members: $allMembers');
 
-      // Get creator name
       final currentUserDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUserId)
           .get();
-      final creatorName = currentUserDoc.data()?['displayname'] ?? 'Unknown';
+      final creatorName =
+          currentUserDoc.data()?['displayname'] ?? currentUserId;
+      final creatorProfilePic = currentUserDoc.data()?['profilePic'] ?? '';
 
       // Create group using controller
       final groupChatController = ref.read(groupChatControllerProvider);
@@ -159,7 +163,9 @@ class _CreateGroupChatState extends ConsumerState<CreateGroupChat> {
         groupProfilePic: groupProfilePic,
         creatorId: currentUserId,
         creatorName: creatorName,
+        creatorProfilePic: creatorProfilePic,
       );
+      ;
       print('Group created successfully in Firestore!');
 
       if (mounted) {
@@ -192,12 +198,12 @@ class _CreateGroupChatState extends ConsumerState<CreateGroupChat> {
 
   @override
   Widget build(BuildContext context) {
-    String hintName = widget.selectedFriendsData.values
-        .map((data) => data['displayname'] ?? 'Unknown')
+    String hintName = _selectedFriendsData.values
+        .map((data) => data['displayname'] ?? '')
         .take(2)
         .join(', ');
-    if (widget.selectedFriendsData.length > 2) {
-      hintName += ' & ${widget.selectedFriendsData.length - 2} more';
+    if (_selectedFriendsData.length > 2) {
+      hintName += ' & ${_selectedFriendsData.length - 2} more';
     }
 
     final charCount = groupNameController.text.length;
