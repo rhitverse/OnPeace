@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:on_peace/colors.dart';
 import 'package:on_peace/screens/calls/controller/call_provider.dart';
 import 'package:on_peace/screens/chat/group/controller/group_chat_provider.dart';
+import 'package:on_peace/screens/chat/group/widget/view_group_info.dart';
 import 'package:on_peace/screens/chat/provider/pending_messages_provider.dart';
 import 'package:on_peace/screens/chat/provider/uploading_messages_provider.dart';
 import 'package:on_peace/screens/chat/widget/bottom_chat_field.dart';
@@ -175,9 +176,17 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
   }
 
   Future<void> _openGroupInfo() async {
-    ScaffoldMessenger.of(
+    Navigator.push(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Group info screen')));
+      MaterialPageRoute(
+        builder: (context) => ViewGroupInfo(
+          groupId: widget.groupId,
+          groupName: groupName,
+          groupProfilePic: groupProfilePic,
+          memberIds: widget.memberIds,
+        ),
+      ),
+    );
   }
 
   @override
