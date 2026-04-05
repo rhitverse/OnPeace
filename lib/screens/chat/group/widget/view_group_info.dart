@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -5,6 +7,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:on_peace/colors.dart';
 import 'package:on_peace/common/utils/common_cloudinary_repository.dart';
 import 'package:on_peace/common/utils/utils.dart';
+import 'package:on_peace/screens/chat/group/screen/group_edit_profile.dart';
 import 'package:on_peace/screens/chat/widget/full_screen_image.dart';
 import 'package:on_peace/screens/chat/group/widget/group_media.dart';
 import 'package:on_peace/screens/settings/widget/image_crop_helper.dart';
@@ -32,12 +35,14 @@ class _ViewGroupInfoState extends State<ViewGroupInfo> {
   bool _isUpdatingPic = false;
   late List<String> memberList;
   late String groupProfilePic;
+  late String groupName;
   String? _creatorId;
   @override
   void initState() {
     super.initState();
     memberList = widget.memberIds;
     groupProfilePic = widget.groupProfilePic;
+    groupName = widget.groupName;
     _loadCreatorId();
   }
 
@@ -59,47 +64,6 @@ class _ViewGroupInfoState extends State<ViewGroupInfo> {
     } catch (_) {}
   }
 
-  Future<void> _changeGroupPhoto(bool isCreator) async {
-    if (!isCreator) {
-      if (!mounted) return;
-      showSnackBar(context: context, content: 'Only creator can change photo');
-      return;
-    }
-
-    final picked = await pickImageFromGallery(context);
-    if (picked == null) return;
-
-    final cropped = await ImageCropHelper.cropProfilePic(picked);
-    if (cropped == null) return;
-
-    setState(() => _isUpdatingPic = true);
-
-    try {
-      final cloudinaryRepo = CommonCloudinaryRepository();
-      final imageUrl = await cloudinaryRepo.storeFileToCloudinary(cropped);
-
-      if (imageUrl == null) {
-        throw Exception('Failed to upload image');
-      }
-
-      await FirebaseFirestore.instance
-          .collection('GroupChats')
-          .doc(widget.groupId)
-          .update({'groupProfilePic': imageUrl});
-
-      if (!mounted) return;
-      setState(() => groupProfilePic = imageUrl);
-    } catch (e) {
-      if (mounted) {
-        showSnackBar(context: context, content: 'Photo update failed');
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isUpdatingPic = false);
-      }
-    }
-  }
-
   void _viewGroupPhoto() {
     if (groupProfilePic.isEmpty) return;
     Navigator.push(
@@ -108,6 +72,30 @@ class _ViewGroupInfoState extends State<ViewGroupInfo> {
         builder: (_) => FullScreenImage(imageUrl: groupProfilePic),
       ),
     );
+  }
+
+  Future<void> _openGroupEdit(bool isCreator) async {
+    if (!isCreator) {
+      showSnackBar(context: context, content: 'Only creator can edit');
+      return;
+    }
+
+    final result = await Navigator.push<Map<String, String>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GroupEditProfile(
+          groupId: widget.groupId,
+          groupName: groupName,
+          groupProfilePic: groupProfilePic,
+        ),
+      ),
+    );
+
+    if (result == null || !mounted) return;
+    setState(() {
+      groupName = result['groupName'] ?? groupName;
+      groupProfilePic = result['groupProfilePic'] ?? groupProfilePic;
+    });
   }
 
   @override
@@ -146,8 +134,7 @@ class _ViewGroupInfoState extends State<ViewGroupInfo> {
                 Column(
                   children: [
                     GestureDetector(
-                      onTap: () => _changeGroupPhoto(isCreator),
-                      onLongPress: _viewGroupPhoto,
+                      onTap: _viewGroupPhoto,
                       child: Stack(
                         children: [
                           CircleAvatar(
@@ -186,17 +173,27 @@ class _ViewGroupInfoState extends State<ViewGroupInfo> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
-                          widget.groupName,
-                          style: const TextStyle(
-                            color: whiteColor,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 20,
+                        GestureDetector(
+                          onTap: () => _openGroupEdit(isCreator),
+                          child: Text(
+                            groupName,
+                            style: const TextStyle(
+                              color: whiteColor,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 20,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 6),
                         if (isCreator)
-                          const Icon(Icons.edit, color: whiteColor, size: 16),
+                          GestureDetector(
+                            onTap: () => _openGroupEdit(isCreator),
+                            child: const Icon(
+                              Icons.edit,
+                              color: whiteColor,
+                              size: 16,
+                            ),
+                          ),
                       ],
                     ),
                   ],
@@ -244,22 +241,58 @@ class _ViewGroupInfoState extends State<ViewGroupInfo> {
             ),
           ),
           if (_showMoreOptions)
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () => setState(() => _showMoreOptions = false),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 1, sigmaY: 1),
+                  child: Container(color: Colors.black.withOpacity(0.25)),
+                ),
+              ),
+            ),
+          if (_showMoreOptions)
             Positioned(
               right: 16,
-              top: 220,
+              top: 250,
               child: Container(
-                width: 160,
+                width: 130,
                 decoration: BoxDecoration(
-                  color: Colors.grey[900],
-                  borderRadius: BorderRadius.circular(12),
+                  color: searchBarColor,
+                  borderRadius: BorderRadius.circular(15),
                 ),
                 child: Column(
                   children: [
-                    _buildMoreOption('Leave', Icons.logout),
-                    _buildMoreOption('Hide', Icons.visibility_off),
-                    _buildMoreOption('Restrict', Icons.lock),
-                    _buildMoreOption('Block', Icons.block),
-                    _buildMoreOption('Report', Icons.report, color: Colors.red),
+                    _buildMoreOption(
+                      'Leave',
+                      'assets/svg/groupLeave.svg',
+                      iconWidth: 22,
+                      iconHeight: 22,
+                    ),
+                    _buildMoreOption(
+                      'Hide',
+                      'assets/svg/hide.svg',
+                      iconWidth: 22,
+                      iconHeight: 22,
+                    ),
+                    _buildMoreOption(
+                      'Restrict',
+                      'assets/svg/restrictUser.svg',
+                      iconWidth: 22,
+                      iconHeight: 22,
+                    ),
+                    _buildMoreOption(
+                      'Block',
+                      'assets/svg/blockUser.svg',
+                      iconWidth: 22,
+                      iconHeight: 22,
+                    ),
+                    _buildMoreOption(
+                      'Report',
+                      'assets/svg/reportUser.svg',
+                      iconWidth: 22,
+                      iconHeight: 22,
+                      color: Colors.red,
+                    ),
                   ],
                 ),
               ),
@@ -289,12 +322,23 @@ class _ViewGroupInfoState extends State<ViewGroupInfo> {
     );
   }
 
-  Widget _buildMoreOption(String label, IconData icon, {Color? color}) {
+  Widget _buildMoreOption(
+    String label,
+    String iconAsset, {
+    double iconWidth = 22,
+    double iconHeight = 22,
+    Color? color,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          Icon(icon, color: color ?? whiteColor, size: 18),
+          SvgPicture.asset(
+            iconAsset,
+            width: iconWidth,
+            height: iconHeight,
+            colorFilter: ColorFilter.mode(color ?? whiteColor, BlendMode.srcIn),
+          ),
           const SizedBox(width: 12),
           Text(
             label,

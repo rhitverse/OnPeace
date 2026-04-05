@@ -4,12 +4,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:on_peace/colors.dart';
 import 'package:on_peace/common/encryption/encryption_service.dart';
 import 'package:on_peace/screens/chat/widget/full_screen_image.dart';
 import 'package:on_peace/screens/chat/widget/message_helper.dart';
 import 'package:on_peace/screens/chat/widget/video_player_screen.dart';
+import 'package:on_peace/widgets/helpful_widgets/right_popUp.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -43,7 +45,7 @@ class _GroupMediaSectionState extends State<GroupMediaSection> {
         _buildMediaTabs(),
         const SizedBox(height: 12),
         SizedBox(
-          height: MediaQuery.of(context).size.height * 0.5,
+          height: MediaQuery.of(context).size.height * 0.4,
           child: PageView(
             controller: _mediaPageController,
             onPageChanged: (index) {
@@ -235,30 +237,39 @@ class _GroupMediaSectionState extends State<GroupMediaSection> {
                 borderRadius: BorderRadius.circular(15),
                 color: searchBarColor,
               ),
-              child: ListTile(
-                dense: true,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(15),
+                  onTap: () => _openDocument(mediaUrl, fileName),
+                  child: ListTile(
+                    dense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    visualDensity: const VisualDensity(vertical: -2),
+                    leading: SvgPicture.asset(
+                      'assets/svg/documents.svg',
+                      width: 28,
+                      height: 28,
+                      colorFilter: const ColorFilter.mode(
+                        uiColor,
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                    title: Text(
+                      fileName,
+                      style: const TextStyle(color: whiteColor, fontSize: 13),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Text(
+                      subtitle,
+                      style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                    ),
+                  ),
                 ),
-                visualDensity: const VisualDensity(vertical: -2),
-                leading: SvgPicture.asset(
-                  'assets/svg/documents.svg',
-                  width: 28,
-                  height: 28,
-                  colorFilter: const ColorFilter.mode(uiColor, BlendMode.srcIn),
-                ),
-                title: Text(
-                  fileName,
-                  style: const TextStyle(color: whiteColor, fontSize: 13),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                subtitle: Text(
-                  subtitle,
-                  style: TextStyle(color: Colors.grey[500], fontSize: 11),
-                ),
-                onTap: () => _openExternalLink(mediaUrl),
               ),
             );
           },
@@ -285,23 +296,46 @@ class _GroupMediaSectionState extends State<GroupMediaSection> {
           physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.symmetric(vertical: 8),
           itemCount: links.length,
-          separatorBuilder: (_, __) => const Divider(color: Colors.black26),
+          separatorBuilder: (_, __) => SizedBox(height: 2),
           itemBuilder: (context, index) {
             final link = links[index];
-            return ListTile(
-              leading: SvgPicture.asset(
-                'assets/svg/link.svg',
-                width: 22,
-                height: 22,
-                colorFilter: ColorFilter.mode(whiteColor, BlendMode.srcIn),
+            return Container(
+              margin: EdgeInsets.symmetric(vertical: 2),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(15),
+                color: receiverMessageColor,
               ),
-              title: Text(
-                link,
-                style: const TextStyle(color: whiteColor, fontSize: 13),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(15),
+                  onTap: () => _openLink(link),
+                  onLongPress: () => _copyLink(link),
+                  child: ListTile(
+                    dense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    visualDensity: const VisualDensity(vertical: -2),
+                    leading: SvgPicture.asset(
+                      'assets/svg/link.svg',
+                      width: 22,
+                      height: 22,
+                      colorFilter: ColorFilter.mode(
+                        whiteColor,
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                    title: Text(
+                      link,
+                      style: const TextStyle(color: whiteColor, fontSize: 13),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
               ),
-              onTap: () => _openExternalLink(link),
             );
           },
         );
@@ -484,20 +518,82 @@ class _GroupMediaSectionState extends State<GroupMediaSection> {
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
-  Future<void> _openExternalLink(String url) async {
+  Future<void> _openDocument(String url, String fileName) async {
     try {
       if (url.isEmpty) return;
-
-      final dir = await getTemporaryDirectory();
-      final filePath =
-          '${dir.path}/${DateTime.now().millisecondsSinceEpoch}.pdf';
-
-      await Dio().download(url, filePath);
-
+      final filePath = await _downloadToTemp(url, fileName);
+      if (filePath == null) return;
       await OpenFile.open(filePath);
     } catch (e) {
       debugPrint('Error opening file: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Failed to open file')));
     }
+  }
+
+  Future<void> _openLink(String url) async {
+    if (url.isEmpty) return;
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _copyLink(String url) async {
+    if (url.isEmpty) return;
+    await Clipboard.setData(ClipboardData(text: url));
+    if (!mounted) return;
+    RightPopup.show(context, 'Link Copied');
+  }
+
+  Future<String?> _downloadToTemp(String url, String fileName) async {
+    try {
+      final dir = await getTemporaryDirectory();
+      final safeName = _safeFileName(fileName, url);
+      final filePath = '${dir.path}/$safeName';
+      final downloadUrl = _normalizeDownloadUrl(url, fileName);
+      await Dio().download(downloadUrl, filePath);
+      return filePath;
+    } catch (e) {
+      debugPrint('Download failed: $e');
+      if (!mounted) return null;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Download failed')));
+      return null;
+    }
+  }
+
+  String _safeFileName(String fileName, String url) {
+    final trimmed = fileName.trim();
+    if (trimmed.isNotEmpty) {
+      return trimmed.replaceAll(' ', '_');
+    }
+    final uri = Uri.tryParse(url);
+    final last = uri?.pathSegments.isNotEmpty == true
+        ? uri!.pathSegments.last
+        : 'document';
+    return last.replaceAll(' ', '_');
+  }
+
+  String _normalizeDownloadUrl(String url, String fileName) {
+    final lower = fileName.toLowerCase();
+    final isDoc = [
+      'pdf',
+      'doc',
+      'docx',
+      'xls',
+      'xlsx',
+      'ppt',
+      'pptx',
+      'txt',
+    ].any((ext) => lower.endsWith(ext));
+
+    if (isDoc && url.contains('/image/upload/')) {
+      return url.replaceFirst('/image/upload/', '/image/upload/fl_attachment/');
+    }
+    return url;
   }
 
   Widget _buildEmptySection(String message) {
