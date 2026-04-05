@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:on_peace/colors.dart';
 import 'package:on_peace/common/utils/common_cloudinary_repository.dart';
 import 'package:on_peace/common/utils/utils.dart';
 import 'package:on_peace/screens/chat/widget/full_screen_image.dart';
+import 'package:on_peace/screens/chat/group/widget/group_media.dart';
 import 'package:on_peace/screens/settings/widget/image_crop_helper.dart';
 
 class ViewGroupInfo extends StatefulWidget {
@@ -31,8 +33,6 @@ class _ViewGroupInfoState extends State<ViewGroupInfo> {
   late List<String> memberList;
   late String groupProfilePic;
   String? _creatorId;
-  int _mediaTabIndex = 0;
-  final PageController _mediaPageController = PageController();
   @override
   void initState() {
     super.initState();
@@ -43,7 +43,6 @@ class _ViewGroupInfoState extends State<ViewGroupInfo> {
 
   @override
   void dispose() {
-    _mediaPageController.dispose();
     super.dispose();
   }
 
@@ -57,9 +56,7 @@ class _ViewGroupInfoState extends State<ViewGroupInfo> {
       final creatorId = doc.data()?['creatorId'] as String?;
       if (!mounted) return;
       setState(() => _creatorId = creatorId);
-    } catch (_) {
-      // Ignore fetch errors; fall back to member list check.
-    }
+    } catch (_) {}
   }
 
   Future<void> _changeGroupPhoto(bool isCreator) async {
@@ -318,81 +315,25 @@ class _ViewGroupInfoState extends State<ViewGroupInfo> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildInfoRow(Icons.brush, 'Theme', 'Dark'),
+          _buildInfoRow('assets/svg/sunny.svg', 'Theme', 'Dark'),
           const SizedBox(height: 16),
-          _buildInfoRow(Icons.link, 'Invite link', 'https://chat.link/group'),
+          _buildInfoRow(
+            'assets/svg/link.svg',
+            'Invite link',
+            'https://chat.link/group',
+          ),
           const SizedBox(height: 16),
           _buildMembersRow(),
           const SizedBox(height: 16),
-          _buildInfoRow(Icons.lock_outline, 'Privacy & safety', ''),
+          _buildInfoRow('assets/svg/lock.svg', 'Privacy & safety', ''),
           const SizedBox(height: 20),
-          _buildMediaTabs(),
-          SizedBox(
-            height: 440,
-            child: PageView(
-              controller: _mediaPageController,
-              onPageChanged: (index) {
-                setState(() => _mediaTabIndex = index);
-              },
-              children: [
-                _buildMediaGallery(),
-                _buildEmptySection('No documents shared yet'),
-                _buildEmptySection('No links shared yet'),
-              ],
-            ),
-          ),
+          GroupMediaSection(groupId: widget.groupId),
         ],
       ),
     );
   }
 
-  Widget _buildMediaTabs() {
-    return Row(
-      children: [
-        _buildMediaTab(icon: Icons.photo, index: 0),
-        const Spacer(),
-        _buildMediaTab(icon: Icons.insert_drive_file, index: 1),
-        const Spacer(),
-        _buildMediaTab(icon: Icons.link, index: 2),
-      ],
-    );
-  }
-
-  Widget _buildMediaTab({required IconData icon, required int index}) {
-    final isActive = _mediaTabIndex == index;
-    return GestureDetector(
-      onTap: () {
-        _mediaPageController.animateToPage(
-          index,
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOut,
-        );
-      },
-      child: Column(
-        children: [
-          Icon(icon, color: whiteColor, size: 20),
-          const SizedBox(height: 6),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            height: 2,
-            width: 36,
-            decoration: BoxDecoration(
-              color: isActive ? whiteColor : Colors.transparent,
-              borderRadius: BorderRadius.circular(999),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptySection(String message) {
-    return Center(
-      child: Text(message, style: TextStyle(color: Colors.grey[600])),
-    );
-  }
-
-  Widget _buildInfoRow(IconData icon, String title, String subtitle) {
+  Widget _buildInfoRow(String iconAsset, String title, String subtitle) {
     return GestureDetector(
       onTap: () {},
       child: Row(
@@ -400,7 +341,12 @@ class _ViewGroupInfoState extends State<ViewGroupInfo> {
         children: [
           Padding(
             padding: const EdgeInsets.only(top: 2),
-            child: Icon(icon, color: whiteColor, size: 24),
+            child: SvgPicture.asset(
+              iconAsset,
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(whiteColor, BlendMode.srcIn),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -434,7 +380,7 @@ class _ViewGroupInfoState extends State<ViewGroupInfo> {
       builder: (context, snapshot) {
         final names = snapshot.data ?? [];
         final subtitle = _formatMemberSubtitle(names);
-        return _buildInfoRow(Icons.group, 'Members', subtitle);
+        return _buildInfoRow('assets/svg/group.svg', 'Members', subtitle);
       },
     );
   }
@@ -472,93 +418,6 @@ class _ViewGroupInfoState extends State<ViewGroupInfo> {
       final results = await Future.wait(futures);
       return results.where((name) => name.trim().isNotEmpty).toList();
     } catch (_) {
-      return [];
-    }
-  }
-
-  Widget _buildMediaGallery() {
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _fetchGroupMedia(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        final media = snapshot.data ?? [];
-
-        if (media.isEmpty) {
-          return _buildEmptySection('No media shared yet');
-        }
-
-        return GridView.builder(
-          physics: const BouncingScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            childAspectRatio: 1,
-            crossAxisSpacing: 4,
-            mainAxisSpacing: 4,
-          ),
-          itemCount: media.length,
-          itemBuilder: (context, index) {
-            final item = media[index];
-            return Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: Colors.grey[900],
-              ),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      item['mediaUrl'],
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Center(
-                          child: Icon(
-                            item['mediaType'] == 'image'
-                                ? Icons.image
-                                : Icons.videocam,
-                            color: Colors.grey,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  if (item['mediaType'] == 'video')
-                    const Center(
-                      child: Icon(
-                        Icons.play_circle_outline,
-                        color: whiteColor,
-                        size: 32,
-                      ),
-                    ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Future<List<Map<String, dynamic>>> _fetchGroupMedia() async {
-    try {
-      final msgDocs = await FirebaseFirestore.instance
-          .collection('GroupChats')
-          .doc(widget.groupId)
-          .collection('messages')
-          .where('mediaType', whereIn: ['image', 'video'])
-          .orderBy('time', descending: true)
-          .limit(20)
-          .get();
-
-      return msgDocs.docs
-          .map((doc) => doc.data() as Map<String, dynamic>)
-          .toList();
-    } catch (e) {
-      print('Error fetching group media: $e');
       return [];
     }
   }
