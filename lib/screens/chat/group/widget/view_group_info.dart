@@ -104,16 +104,47 @@ class _ViewGroupInfoState extends State<ViewGroupInfo> {
       MaterialPageRoute(
         builder: (_) => AddUserGroup(
           initialSelected: Set.from(memberList),
-          onDone: (selected, selectedData) {
+          onDone: (selected, selectedData) async {
             if (!mounted) return;
-            showSnackBar(
-              context: context,
-              content: '${selected.length} selected',
-            );
+            await _addMembersToGroup(selected);
           },
         ),
       ),
     );
+  }
+
+  Future<void> _addMembersToGroup(Set<String> selected) async {
+    try {
+      final newMembers = selected.difference(memberList.toSet()).toList();
+      if (newMembers.isEmpty) {
+        showSnackBar(context: context, content: 'No new members');
+        return;
+      }
+
+      final updates = <String, dynamic>{
+        'members': FieldValue.arrayUnion(newMembers),
+      };
+      for (final uid in newMembers) {
+        updates['unreadCount_$uid'] = 0;
+      }
+
+      await FirebaseFirestore.instance
+          .collection('GroupChats')
+          .doc(widget.groupId)
+          .update(updates);
+
+      if (!mounted) return;
+      setState(() {
+        memberList.addAll(newMembers);
+      });
+      showSnackBar(
+        context: context,
+        content: '${newMembers.length} added to group',
+      );
+    } catch (_) {
+      if (!mounted) return;
+      showSnackBar(context: context, content: 'Failed to add members');
+    }
   }
 
   void _openMembersScreen() {

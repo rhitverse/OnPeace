@@ -796,6 +796,7 @@ class GroupChatRepository {
           'creatorId': finalCreatorId,
           'creatorName': finalCreatorName,
           'creatorProfilePic': creatorProfilePic,
+          'admins': finalCreatorId != null ? [finalCreatorId] : <String>[],
           'createdAt': FieldValue.serverTimestamp(),
           for (var uid in members) 'unreadCount_$uid': 0,
         });

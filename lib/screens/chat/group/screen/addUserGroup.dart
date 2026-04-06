@@ -95,9 +95,7 @@ class _AddUserGroupState extends State<AddUserGroup> {
           icon: const Icon(Icons.arrow_back_ios, color: whiteColor),
         ),
         title: Text(
-          selectedFriends.isEmpty
-              ? 'Add people'
-              : '${selectedFriends.length} selected',
+          'Add people',
           style: const TextStyle(
             color: whiteColor,
             fontWeight: FontWeight.bold,
@@ -132,7 +130,6 @@ class _AddUserGroupState extends State<AddUserGroup> {
             )
           : Column(
               children: [
-                // Search bar
                 Container(
                   height: 42,
                   margin: const EdgeInsets.only(
@@ -181,7 +178,6 @@ class _AddUserGroupState extends State<AddUserGroup> {
                   ),
                 ),
 
-                // Friends list
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
@@ -189,22 +185,28 @@ class _AddUserGroupState extends State<AddUserGroup> {
                         .where('uid', isEqualTo: currentUid)
                         .snapshots(),
                     builder: (context, snapshot) {
-                      List<Map<String, dynamic>> friends = [];
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+
+                      List<String> alreadyAdded = [];
+                      List<String> recentFriends = [];
+
                       if (snapshot.hasData) {
                         for (final doc in snapshot.data!.docs) {
                           final data = doc.data() as Map<String, dynamic>;
                           final friendUid = data['friendUid'] ?? '';
                           if (friendUid.isNotEmpty && friendUid != currentUid) {
-                            friends.add({'friendUid': friendUid});
+                            if (widget.initialSelected.contains(friendUid)) {
+                              alreadyAdded.add(friendUid);
+                            } else {
+                              recentFriends.add(friendUid);
+                            }
                           }
                         }
                       }
 
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-
-                      if (friends.isEmpty) {
+                      if (alreadyAdded.isEmpty && recentFriends.isEmpty) {
                         return Center(
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
@@ -227,102 +229,88 @@ class _AddUserGroupState extends State<AddUserGroup> {
                         );
                       }
 
-                      return ListView.builder(
-                        itemCount: friends.length,
-                        itemBuilder: (context, index) {
-                          final uid = friends[index]['friendUid'];
-                          return _FriendTile(
-                            key: ValueKey(uid),
-                            friendUid: uid,
-                            currentUid: currentUid,
-                            isSelected: selectedFriends.contains(uid),
-                            searchQuery: _searchQuery,
-                            onSelected: (uid, isSelected, userData) {
-                              setState(() {
-                                if (isSelected) {
-                                  selectedFriends.add(uid);
-                                  selectedFriendsData[uid] = userData;
-                                } else {
-                                  selectedFriends.remove(uid);
-                                  selectedFriendsData.remove(uid);
-                                }
-                              });
-                            },
-                          );
-                        },
+                      return ListView(
+                        children: [
+                          if (alreadyAdded.isNotEmpty) ...[
+                            const Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 6,
+                              ),
+                              child: Text(
+                                "Group members",
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                            ...alreadyAdded.map(
+                              (uid) => _FriendTile(
+                                key: ValueKey('added_$uid'),
+                                friendUid: uid,
+                                currentUid: currentUid,
+                                isSelected: selectedFriends.contains(uid),
+                                showCheckbox: false,
+                                searchQuery: _searchQuery,
+                                onSelected: (uid, isSelected, userData) {
+                                  setState(() {
+                                    if (isSelected) {
+                                      selectedFriends.add(uid);
+                                      selectedFriendsData[uid] = userData;
+                                    } else {
+                                      selectedFriends.remove(uid);
+                                      selectedFriendsData.remove(uid);
+                                    }
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
+
+                          if (recentFriends.isNotEmpty) ...[
+                            const Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 6,
+                              ),
+                              child: Text(
+                                "Friends",
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                            ...recentFriends.map(
+                              (uid) => _FriendTile(
+                                key: ValueKey('recent_$uid'),
+                                friendUid: uid,
+                                currentUid: currentUid,
+                                isSelected: selectedFriends.contains(uid),
+                                showCheckbox: true,
+                                searchQuery: _searchQuery,
+                                onSelected: (uid, isSelected, userData) {
+                                  setState(() {
+                                    if (isSelected) {
+                                      selectedFriends.add(uid);
+                                      selectedFriendsData[uid] = userData;
+                                    } else {
+                                      selectedFriends.remove(uid);
+                                      selectedFriendsData.remove(uid);
+                                    }
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
+                        ],
                       );
                     },
                   ),
                 ),
 
-                // Bottom selected avatars row
-                if (selectedFriends.isNotEmpty)
-                  Container(
-                    decoration: BoxDecoration(
-                      color: backgroundColor,
-                      border: const Border(
-                        top: BorderSide(color: Colors.white12, width: 1),
-                      ),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    child: SizedBox(
-                      height: 75,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: selectedFriends.length,
-                        itemBuilder: (context, index) {
-                          final uid = selectedFriends.elementAt(index);
-                          final data = selectedFriendsData[uid] ?? {};
-                          final name =
-                              data['displayname'] ?? data['name'] ?? 'Unknown';
-                          final profilePic = data['profilePic'] ?? '';
-
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 12),
-                            child: Column(
-                              children: [
-                                CircleAvatar(
-                                  radius: 24,
-                                  backgroundColor: Colors.grey.shade700,
-                                  backgroundImage: profilePic.isNotEmpty
-                                      ? NetworkImage(profilePic)
-                                      : null,
-                                  child: profilePic.isEmpty
-                                      ? Text(
-                                          name.isNotEmpty
-                                              ? name[0].toUpperCase()
-                                              : '?',
-                                          style: const TextStyle(
-                                            color: whiteColor,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                          ),
-                                        )
-                                      : null,
-                                ),
-                                const SizedBox(height: 4),
-                                SizedBox(
-                                  width: 48,
-                                  child: Text(
-                                    name,
-                                    style: const TextStyle(
-                                      color: Colors.grey,
-                                      fontSize: 10,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
+                const SizedBox.shrink(),
               ],
             ),
     );
@@ -333,6 +321,7 @@ class _FriendTile extends StatefulWidget {
   final String friendUid;
   final String? currentUid;
   final bool isSelected;
+  final bool showCheckbox;
   final String searchQuery;
   final Function(String uid, bool isSelected, Map<String, dynamic> userData)
   onSelected;
@@ -341,6 +330,7 @@ class _FriendTile extends StatefulWidget {
     required this.friendUid,
     this.currentUid,
     required this.isSelected,
+    required this.showCheckbox,
     required this.searchQuery,
     required this.onSelected,
     super.key,
@@ -383,8 +373,10 @@ class _FriendTileState extends State<_FriendTile> {
         }
 
         return ListTile(
-          onTap: () =>
-              widget.onSelected(widget.friendUid, !widget.isSelected, data),
+          onTap: () {
+            if (!widget.showCheckbox) return;
+            widget.onSelected(widget.friendUid, !widget.isSelected, data);
+          },
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 12,
             vertical: 4,
@@ -414,22 +406,24 @@ class _FriendTileState extends State<_FriendTile> {
               fontSize: 16,
             ),
           ),
-          trailing: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 26,
-            height: 26,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: widget.isSelected ? uiColor : Colors.transparent,
-              border: Border.all(
-                color: widget.isSelected ? uiColor : Colors.grey,
-                width: 1.5,
-              ),
-            ),
-            child: widget.isSelected
-                ? const Icon(Icons.check, color: whiteColor, size: 16)
-                : null,
-          ),
+          trailing: widget.showCheckbox
+              ? AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: widget.isSelected ? uiColor : Colors.transparent,
+                    border: Border.all(
+                      color: widget.isSelected ? uiColor : Colors.grey,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: widget.isSelected
+                      ? const Icon(Icons.check, color: whiteColor, size: 16)
+                      : null,
+                )
+              : null,
         );
       },
     );

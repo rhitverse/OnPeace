@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:on_peace/colors.dart';
 
@@ -21,10 +22,13 @@ class GroupMembersScreen extends StatefulWidget {
 class _GroupMembersScreenState extends State<GroupMembersScreen> {
   late final Future<List<_MemberInfo>> _membersFuture;
   String? _creatorId;
+  List<String> _adminIds = [];
+  String? _currentUid;
 
   @override
   void initState() {
     super.initState();
+    _currentUid = FirebaseAuth.instance.currentUser?.uid;
     _membersFuture = _fetchMembers();
     _loadCreatorId();
   }
@@ -36,9 +40,24 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
           .doc(widget.groupId)
           .get();
       if (!doc.exists) return;
-      final creatorId = doc.data()?['creatorId'] as String?;
+      final data = doc.data() ?? {};
+      final creatorId = data['creatorId'] as String?;
+      final adminsRaw = data['admins'];
+      final admins = adminsRaw is List
+          ? adminsRaw.whereType<String>().toList()
+          : <String>[];
+      if (creatorId != null && !admins.contains(creatorId)) {
+        admins.add(creatorId);
+        await FirebaseFirestore.instance
+            .collection('GroupChats')
+            .doc(widget.groupId)
+            .update({'admins': admins});
+      }
       if (!mounted) return;
-      setState(() => _creatorId = creatorId);
+      setState(() {
+        _creatorId = creatorId;
+        _adminIds = admins;
+      });
     } catch (_) {}
   }
 
@@ -73,7 +92,47 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
     }
   }
 
-  void _handleMemberAction(_MemberInfo member, String action) {}
+  Future<void> _handleMemberAction(_MemberInfo member, String action) async {
+    if (_currentUid == null) return;
+    final isCreator = _currentUid == _creatorId;
+    final isAdmin = _adminIds.contains(_currentUid);
+    if (!isCreator && !isAdmin) return;
+
+    if (action == 'make_admin') {
+      if (member.uid == _creatorId) return;
+      if (_adminIds.contains(member.uid)) return;
+      try {
+        await FirebaseFirestore.instance
+            .collection('GroupChats')
+            .doc(widget.groupId)
+            .update({
+              'admins': FieldValue.arrayUnion([member.uid]),
+            });
+        if (!mounted) return;
+        setState(() {
+          _adminIds = [..._adminIds, member.uid];
+        });
+      } catch (_) {}
+    }
+
+    if (action == 'remove_admin') {
+      if (!isCreator) return;
+      if (member.uid == _creatorId) return;
+      if (!_adminIds.contains(member.uid)) return;
+      try {
+        await FirebaseFirestore.instance
+            .collection('GroupChats')
+            .doc(widget.groupId)
+            .update({
+              'admins': FieldValue.arrayRemove([member.uid]),
+            });
+        if (!mounted) return;
+        setState(() {
+          _adminIds = _adminIds.where((id) => id != member.uid).toList();
+        });
+      } catch (_) {}
+    }
+  }
 
   void _showMemberOptions(BuildContext context, _MemberInfo member) {
     showModalBottomSheet(
@@ -152,33 +211,52 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
             Divider(color: whiteColor.withOpacity(0.07), height: 1),
             const SizedBox(height: 8),
 
-            Row(
-              children: [
-                Expanded(
-                  child: _SimpleOptionTile(
-                    label: 'Remove user',
-                    labelColor: Colors.redAccent,
-                    onTap: () {
-                      Navigator.pop(context);
-                      _handleMemberAction(member, 'kick');
-                    },
+            if (_currentUid == _creatorId || !_adminIds.contains(member.uid))
+              Row(
+                children: [
+                  Expanded(
+                    child: _SimpleOptionTile(
+                      label: 'Remove user',
+                      labelColor: Colors.redAccent,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _handleMemberAction(member, 'kick');
+                      },
+                    ),
                   ),
-                ),
-              ],
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: _SimpleOptionTile(
-                    label: 'Make admin',
-                    onTap: () {
-                      Navigator.pop(context);
-                      _handleMemberAction(member, 'make_admin');
-                    },
+                ],
+              ),
+            if (_currentUid == _creatorId &&
+                member.uid != _creatorId &&
+                _adminIds.contains(member.uid))
+              Row(
+                children: [
+                  Expanded(
+                    child: _SimpleOptionTile(
+                      label: 'Remove admin',
+                      labelColor: Colors.redAccent,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _handleMemberAction(member, 'remove_admin');
+                      },
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+            if (member.uid != _creatorId && !_adminIds.contains(member.uid))
+              Row(
+                children: [
+                  Expanded(
+                    child: _SimpleOptionTile(
+                      label: 'Make admin',
+                      onTap: () {
+                        Navigator.pop(context);
+                        _handleMemberAction(member, 'make_admin');
+                      },
+                    ),
+                  ),
+                ],
+              ),
             Row(
               children: [
                 Expanded(
@@ -277,13 +355,15 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                 }
 
                 final sortedMembers = List<_MemberInfo>.from(members);
-                if (_creatorId != null) {
-                  sortedMembers.sort((a, b) {
-                    if (a.uid == _creatorId) return -1;
-                    if (b.uid == _creatorId) return 1;
-                    return 0;
-                  });
-                }
+                sortedMembers.sort((a, b) {
+                  if (a.uid == _creatorId) return -1;
+                  if (b.uid == _creatorId) return 1;
+                  final aIsAdmin = _adminIds.contains(a.uid);
+                  final bIsAdmin = _adminIds.contains(b.uid);
+                  if (aIsAdmin && !bIsAdmin) return -1;
+                  if (!aIsAdmin && bIsAdmin) return 1;
+                  return 0;
+                });
 
                 return ListView.separated(
                   padding: const EdgeInsets.symmetric(vertical: 4),
@@ -296,6 +376,14 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                   itemBuilder: (context, index) {
                     final member = sortedMembers[index];
                     final isCreator = member.uid == _creatorId;
+                    final isAdmin = _adminIds.contains(member.uid);
+                    final isOperator =
+                        _currentUid == _creatorId ||
+                        _adminIds.contains(_currentUid);
+                    final canManage =
+                        isOperator &&
+                        !isCreator &&
+                        (_currentUid == _creatorId || !isAdmin);
 
                     return Row(
                       children: [
@@ -358,27 +446,34 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                           ),
                         ),
 
-                        if (isCreator)
-                          Container(
-                            margin: const EdgeInsets.only(right: 12),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: whiteColor.withOpacity(0.08),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Text(
-                              'Creator',
-                              style: TextStyle(
-                                color: whiteColor,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
+                        if (isCreator || isAdmin)
+                          GestureDetector(
+                            onTap:
+                                (isAdmin || _currentUid == _creatorId) &&
+                                    member.uid != _currentUid
+                                ? () => _showMemberOptions(context, member)
+                                : null,
+                            child: Container(
+                              margin: const EdgeInsets.only(right: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: whiteColor.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                isCreator ? 'Creator' : 'Admin',
+                                style: const TextStyle(
+                                  color: whiteColor,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           )
-                        else
+                        else if (canManage)
                           GestureDetector(
                             onTap: () => _showMemberOptions(context, member),
                             behavior: HitTestBehavior.opaque,
