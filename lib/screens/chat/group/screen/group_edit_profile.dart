@@ -238,6 +238,7 @@ class _GroupEditProfileState extends State<GroupEditProfile> {
             const SizedBox(height: 20),
             TextField(
               controller: _nameController,
+              cursorColor: uiColor,
               style: const TextStyle(color: whiteColor),
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(

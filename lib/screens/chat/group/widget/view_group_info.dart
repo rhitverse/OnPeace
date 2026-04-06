@@ -5,12 +5,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:on_peace/colors.dart';
-import 'package:on_peace/common/utils/common_cloudinary_repository.dart';
 import 'package:on_peace/common/utils/utils.dart';
 import 'package:on_peace/screens/chat/group/screen/group_edit_profile.dart';
+import 'package:on_peace/screens/chat/group/screen/group_members_screen.dart';
+import 'package:on_peace/screens/chat/group/screen/addUserGroup.dart';
 import 'package:on_peace/screens/chat/widget/full_screen_image.dart';
 import 'package:on_peace/screens/chat/group/widget/group_media.dart';
-import 'package:on_peace/screens/settings/widget/image_crop_helper.dart';
 
 class ViewGroupInfo extends StatefulWidget {
   final String groupId;
@@ -96,6 +96,37 @@ class _ViewGroupInfoState extends State<ViewGroupInfo> {
       groupName = result['groupName'] ?? groupName;
       groupProfilePic = result['groupProfilePic'] ?? groupProfilePic;
     });
+  }
+
+  void _openAddMembers() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AddUserGroup(
+          initialSelected: Set.from(memberList),
+          onDone: (selected, selectedData) {
+            if (!mounted) return;
+            showSnackBar(
+              context: context,
+              content: '${selected.length} selected',
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  void _openMembersScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GroupMembersScreen(
+          groupId: widget.groupId,
+          groupName: groupName,
+          memberIds: memberList,
+        ),
+      ),
+    );
   }
 
   @override
@@ -206,31 +237,20 @@ class _ViewGroupInfoState extends State<ViewGroupInfo> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      _buildActionButton(Icons.person_add, 'Add'),
+                      _buildActionButton(
+                        Icons.person_add,
+                        'Add',
+                        onTap: _openAddMembers,
+                      ),
                       _buildActionButton(Icons.search, 'Search'),
                       _buildActionButton(Icons.notifications_outlined, 'Mute'),
-                      GestureDetector(
+                      _buildActionButton(
+                        Icons.more_horiz,
+                        'Options',
+                        iconSize: 34,
                         onTap: () {
                           setState(() => _showMoreOptions = !_showMoreOptions);
                         },
-                        child: Column(
-                          children: [
-                            const Icon(
-                              Icons.more_horiz,
-                              color: whiteColor,
-                              size: 34,
-                            ),
-                            const SizedBox(height: 2),
-                            const Text(
-                              'Options',
-                              style: TextStyle(
-                                color: whiteColor,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
                       ),
                     ],
                   ),
@@ -271,8 +291,8 @@ class _ViewGroupInfoState extends State<ViewGroupInfo> {
                     _buildMoreOption(
                       'Hide',
                       'assets/svg/hide.svg',
-                      iconWidth: 22,
-                      iconHeight: 22,
+                      iconWidth: 23,
+                      iconHeight: 23,
                     ),
                     _buildMoreOption(
                       'Restrict',
@@ -283,14 +303,14 @@ class _ViewGroupInfoState extends State<ViewGroupInfo> {
                     _buildMoreOption(
                       'Block',
                       'assets/svg/blockUser.svg',
-                      iconWidth: 22,
-                      iconHeight: 22,
+                      iconWidth: 21,
+                      iconHeight: 21,
                     ),
                     _buildMoreOption(
                       'Report',
                       'assets/svg/reportUser.svg',
-                      iconWidth: 22,
-                      iconHeight: 22,
+                      iconWidth: 21,
+                      iconHeight: 21,
                       color: Colors.red,
                     ),
                   ],
@@ -302,22 +322,39 @@ class _ViewGroupInfoState extends State<ViewGroupInfo> {
     );
   }
 
-  Widget _buildActionButton(IconData icon, String label) {
-    return GestureDetector(
-      onTap: () => setState(() => _showMoreOptions = false),
-      child: Column(
-        children: [
-          Icon(icon, color: whiteColor, size: 28),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: const TextStyle(
-              color: whiteColor,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
+  Widget _buildActionButton(
+    IconData icon,
+    String label, {
+    VoidCallback? onTap,
+    double iconSize = 28,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () {
+          if (_showMoreOptions) {
+            setState(() => _showMoreOptions = false);
+          }
+          onTap?.call();
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          child: Column(
+            children: [
+              Icon(icon, color: whiteColor, size: iconSize),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: whiteColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -377,43 +414,58 @@ class _ViewGroupInfoState extends State<ViewGroupInfo> {
     );
   }
 
-  Widget _buildInfoRow(String iconAsset, String title, String subtitle) {
-    return GestureDetector(
-      onTap: () {},
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: SvgPicture.asset(
-              iconAsset,
-              width: 24,
-              height: 24,
-              colorFilter: const ColorFilter.mode(whiteColor, BlendMode.srcIn),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: whiteColor,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
+  Widget _buildInfoRow(
+    String iconAsset,
+    String title,
+    String subtitle, {
+    VoidCallback? onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: SvgPicture.asset(
+                  iconAsset,
+                  width: 24,
+                  height: 24,
+                  colorFilter: const ColorFilter.mode(
+                    whiteColor,
+                    BlendMode.srcIn,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: whiteColor,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -424,7 +476,12 @@ class _ViewGroupInfoState extends State<ViewGroupInfo> {
       builder: (context, snapshot) {
         final names = snapshot.data ?? [];
         final subtitle = _formatMemberSubtitle(names);
-        return _buildInfoRow('assets/svg/group.svg', 'Members', subtitle);
+        return _buildInfoRow(
+          'assets/svg/group.svg',
+          'Members',
+          subtitle,
+          onTap: _openMembersScreen,
+        );
       },
     );
   }

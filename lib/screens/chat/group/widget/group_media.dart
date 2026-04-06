@@ -30,6 +30,17 @@ class _GroupMediaSectionState extends State<GroupMediaSection> {
   int _mediaTabIndex = 0;
   final PageController _mediaPageController = PageController();
   final EncryptionService _encryption = EncryptionService();
+  late final Future<List<Map<String, dynamic>>> _mediaFuture;
+  late final Future<List<Map<String, dynamic>>> _documentsFuture;
+  late final Future<List<String>> _linksFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _mediaFuture = _fetchGroupMedia();
+    _documentsFuture = _fetchGroupDocuments();
+    _linksFuture = _fetchGroupLinks();
+  }
 
   @override
   void dispose() {
@@ -109,7 +120,7 @@ class _GroupMediaSectionState extends State<GroupMediaSection> {
 
   Widget _buildMediaGallery() {
     return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _fetchGroupMedia(),
+      future: _mediaFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -205,7 +216,7 @@ class _GroupMediaSectionState extends State<GroupMediaSection> {
 
   Widget _buildDocumentsList() {
     return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _fetchGroupDocuments(),
+      future: _documentsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -232,10 +243,10 @@ class _GroupMediaSectionState extends State<GroupMediaSection> {
                 : (doc['mediaType']?.toString().toUpperCase() ?? '');
 
             return Container(
-              margin: EdgeInsets.symmetric(vertical: 2),
+              margin: const EdgeInsets.symmetric(vertical: 2, horizontal: 12),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(15),
-                color: searchBarColor,
+                color: receiverMessageColor,
               ),
               child: Material(
                 color: Colors.transparent,
@@ -280,7 +291,7 @@ class _GroupMediaSectionState extends State<GroupMediaSection> {
 
   Widget _buildLinksList() {
     return FutureBuilder<List<String>>(
-      future: _fetchGroupLinks(),
+      future: _linksFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
