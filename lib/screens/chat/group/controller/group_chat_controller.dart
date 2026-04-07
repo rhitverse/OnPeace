@@ -317,4 +317,30 @@ class GroupChatController {
       return null;
     }
   }
+
+  Future<void> forwardMedia({
+    required String groupId,
+    required String senderId,
+    required String senderName,
+    required String senderProfilePic,
+    required String mediaUrl,
+    required String mediaType,
+    String? fileName,
+    int? fileSize,
+  }) async {
+    try {
+      await _groupChatRepository.forwardMedia(
+        groupId: groupId,
+        senderId: senderId,
+        senderName: senderName,
+        senderProfilePic: senderProfilePic,
+        mediaUrl: mediaUrl,
+        mediaType: mediaType,
+        fileName: fileName,
+        fileSize: fileSize,
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
 }

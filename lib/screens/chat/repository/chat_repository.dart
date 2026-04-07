@@ -901,4 +901,46 @@ class ChatRepository {
       'status': 'accepted',
     });
   }
+
+  Future<void> forwardMedia({
+    required String chatId,
+    required String senderId,
+    required String receiverId,
+    required String mediaUrl,
+    required String mediaType,
+    String? fileName,
+    int? fileSize,
+  }) async {
+    try {
+      await _createChatIfNotExists(chatId, senderId, receiverId);
+
+      await _firestore
+          .collection('Chats')
+          .doc(chatId)
+          .collection('messages')
+          .add({
+            'senderId': senderId,
+            'receiverId': receiverId,
+            'mediaUrl': mediaUrl,
+            'mediaType': mediaType,
+            if (fileName != null) 'fileName': fileName,
+            if (fileSize != null) 'fileSize': fileSize,
+            'isRead': false,
+            'time': FieldValue.serverTimestamp(),
+          });
+
+      final displayText = mediaType == 'image'
+          ? '🖼️ Photo'
+          : mediaType == 'video'
+          ? '🎥 Video'
+          : mediaType == 'audio'
+          ? '🎵 Audio'
+          : '📎 File';
+
+      await _updateLastMessage(chatId, senderId, receiverId, displayText);
+    } catch (e) {
+      debugPrint('Error forwarding media: $e');
+      rethrow;
+    }
+  }
 }

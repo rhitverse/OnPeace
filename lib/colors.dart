@@ -25,3 +25,4 @@ const calendarLightTheme1 = Color(0xff0585d4);
 const calendarLightTheme2 = Color(0xffec6290);
 const chatLoaderlistDark = Color(0xff26292c);
 const dateContainerDark = Color(0xFF1D1F1F);
+final fileContentDark = Colors.grey[900];

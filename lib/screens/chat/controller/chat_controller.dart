@@ -239,4 +239,28 @@ class ChatController {
       rethrow;
     }
   }
+
+  Future<void> forwardMedia({
+    required String chatId,
+    required String senderId,
+    required String receiverId,
+    required String mediaUrl,
+    required String mediaType,
+    String? fileName,
+    int? fileSize,
+  }) async {
+    try {
+      await _chatRepository.forwardMedia(
+        chatId: chatId,
+        senderId: senderId,
+        receiverId: receiverId,
+        mediaUrl: mediaUrl,
+        mediaType: mediaType,
+        fileName: fileName,
+        fileSize: fileSize,
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
 }

@@ -11,6 +11,7 @@ import 'package:on_peace/screens/chat/provider/pending_messages_provider.dart';
 import 'package:on_peace/screens/chat/widget/bottom_chat_field.dart';
 import 'package:on_peace/screens/chat/widget/chat_loader.dart';
 import 'package:on_peace/screens/chat/widget/date_chip.dart';
+import 'package:on_peace/screens/chat/widget/message_action_menu.dart';
 import 'package:on_peace/screens/chat/widget/profile/view_profile_screen.dart';
 import 'package:on_peace/screens/chat/widget/profile/view_profile_unknown.dart';
 import 'package:on_peace/screens/chat/widget/receiver_message.dart';
@@ -439,33 +440,63 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                         if (showDataChip && msgDateTime != null)
                           DateChip(dateTime: msgDateTime),
                         isMe
-                            ? SenderMessage(
-                                text: text,
-                                time: timeString,
-                                showTail: showTail,
-                                isGrouped: isGrouped,
-                                showTime: showTime,
-                                mediaUrl: mediaUrl,
-                                mediaType: mediaType,
-                                fileName: fileName,
-                                fileSize: fileSize,
-                                duration: duration,
-                                isLoading:
-                                    isLoading ||
-                                    (isPending && pendingStatus == 'sending'),
+                            ? GestureDetector(
+                                onLongPress: () {
+                                  MessageActionMenu.show(
+                                    context: context,
+                                    messageData: {
+                                      'text': text,
+                                      'mediaUrl': mediaUrl,
+                                      'mediaType': mediaType,
+                                      'fileName': fileName,
+                                      'fileSize': fileSize,
+                                    },
+                                    onReply: null,
+                                  );
+                                },
+                                child: SenderMessage(
+                                  text: text,
+                                  time: timeString,
+                                  showTail: showTail,
+                                  isGrouped: isGrouped,
+                                  showTime: showTime,
+                                  mediaUrl: mediaUrl,
+                                  mediaType: mediaType,
+                                  fileName: fileName,
+                                  fileSize: fileSize,
+                                  duration: duration,
+                                  isLoading:
+                                      isLoading ||
+                                      (isPending && pendingStatus == 'sending'),
+                                ),
                               )
-                            : ReceiverMessage(
-                                text: text,
-                                time: timeString,
-                                showTail: showTail,
-                                isGrouped: isGrouped,
-                                showTime: showTime,
-                                mediaUrl: mediaUrl,
-                                mediaType: mediaType,
-                                fileName: fileName,
-                                fileSize: fileSize,
-                                duration: duration,
-                                isLoading: isLoading,
+                            : GestureDetector(
+                                onLongPress: () {
+                                  MessageActionMenu.show(
+                                    context: context,
+                                    messageData: {
+                                      'text': text,
+                                      'mediaUrl': mediaUrl,
+                                      'mediaType': mediaType,
+                                      'fileName': fileName,
+                                      'fileSize': fileSize,
+                                    },
+                                    onReply: null,
+                                  );
+                                },
+                                child: ReceiverMessage(
+                                  text: text,
+                                  time: timeString,
+                                  showTail: showTail,
+                                  isGrouped: isGrouped,
+                                  showTime: showTime,
+                                  mediaUrl: mediaUrl,
+                                  mediaType: mediaType,
+                                  fileName: fileName,
+                                  fileSize: fileSize,
+                                  duration: duration,
+                                  isLoading: isLoading,
+                                ),
                               ),
                       ],
                     );

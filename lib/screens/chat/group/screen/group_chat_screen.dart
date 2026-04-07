@@ -13,6 +13,7 @@ import 'package:on_peace/screens/chat/provider/uploading_messages_provider.dart'
 import 'package:on_peace/screens/chat/widget/bottom_chat_field.dart';
 import 'package:on_peace/screens/chat/widget/chat_loader.dart';
 import 'package:on_peace/screens/chat/widget/date_chip.dart';
+import 'package:on_peace/screens/chat/widget/message_action_menu.dart';
 import 'package:on_peace/screens/chat/widget/receiver_message.dart';
 import 'package:on_peace/screens/chat/widget/sender_message.dart';
 
@@ -503,20 +504,35 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                             if (showDateChip && msgDateTime != null)
                               DateChip(dateTime: msgDateTime),
                             if (isMe)
-                              SenderMessage(
-                                text: text,
-                                time: timeString,
-                                showTail: showTail,
-                                isGrouped: isGrouped,
-                                showTime: showTime,
-                                mediaUrl: mediaUrl,
-                                mediaType: mediaType,
-                                fileName: fileName,
-                                fileSize: fileSize,
-                                duration: duration,
-                                isLoading:
-                                    isLoading ||
-                                    (isPending && pendingStatus == 'sending'),
+                              GestureDetector(
+                                onLongPress: () {
+                                  MessageActionMenu.show(
+                                    context: context,
+                                    messageData: {
+                                      'text': text,
+                                      'mediaUrl': mediaUrl,
+                                      'mediaType': mediaType,
+                                      'fileName': fileName,
+                                      'fileSize': fileSize,
+                                    },
+                                    onReply: null,
+                                  );
+                                },
+                                child: SenderMessage(
+                                  text: text,
+                                  time: timeString,
+                                  showTail: showTail,
+                                  isGrouped: isGrouped,
+                                  showTime: showTime,
+                                  mediaUrl: mediaUrl,
+                                  mediaType: mediaType,
+                                  fileName: fileName,
+                                  fileSize: fileSize,
+                                  duration: duration,
+                                  isLoading:
+                                      isLoading ||
+                                      (isPending && pendingStatus == 'sending'),
+                                ),
                               )
                             else
                               Column(
@@ -564,17 +580,32 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                                         ],
                                       ),
                                     ),
-                                  ReceiverMessage(
-                                    text: text,
-                                    time: showTime ? timeString : '',
-                                    showTail: showTail,
-                                    isGrouped: isGrouped,
-                                    showTime: showTime,
-                                    mediaUrl: mediaUrl,
-                                    mediaType: mediaType,
-                                    fileName: fileName,
-                                    fileSize: fileSize,
-                                    duration: duration,
+                                  GestureDetector(
+                                    onLongPress: () {
+                                      MessageActionMenu.show(
+                                        context: context,
+                                        messageData: {
+                                          'text': text,
+                                          'mediaUrl': mediaUrl,
+                                          'mediaType': mediaType,
+                                          'fileName': fileName,
+                                          'fileSize': fileSize,
+                                        },
+                                        onReply: null,
+                                      );
+                                    },
+                                    child: ReceiverMessage(
+                                      text: text,
+                                      time: showTime ? timeString : '',
+                                      showTail: showTail,
+                                      isGrouped: isGrouped,
+                                      showTime: showTime,
+                                      mediaUrl: mediaUrl,
+                                      mediaType: mediaType,
+                                      fileName: fileName,
+                                      fileSize: fileSize,
+                                      duration: duration,
+                                    ),
                                   ),
                                 ],
                               ),

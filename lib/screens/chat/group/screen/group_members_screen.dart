@@ -24,6 +24,7 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
   String? _creatorId;
   List<String> _adminIds = [];
   String? _currentUid;
+  final Set<String> _removedMemberIds = <String>{};
 
   @override
   void initState() {
@@ -98,6 +99,32 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
     final isAdmin = _adminIds.contains(_currentUid);
     if (!isCreator && !isAdmin) return;
 
+    if (action == 'remove_user') {
+      if (member.uid == _creatorId) return;
+      if (!isCreator && _adminIds.contains(member.uid)) return;
+
+      try {
+        final updates = <String, dynamic>{
+          'members': FieldValue.arrayRemove([member.uid]),
+        };
+
+        if (_adminIds.contains(member.uid)) {
+          updates['admins'] = FieldValue.arrayRemove([member.uid]);
+        }
+
+        await FirebaseFirestore.instance
+            .collection('GroupChats')
+            .doc(widget.groupId)
+            .update(updates);
+
+        if (!mounted) return;
+        setState(() {
+          _removedMemberIds.add(member.uid);
+          _adminIds = _adminIds.where((id) => id != member.uid).toList();
+        });
+      } catch (_) {}
+    }
+
     if (action == 'make_admin') {
       if (member.uid == _creatorId) return;
       if (_adminIds.contains(member.uid)) return;
@@ -132,6 +159,33 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
         });
       } catch (_) {}
     }
+  }
+
+  bool _canRemoveUser(_MemberInfo member) {
+    if (_currentUid == null || member.uid == _creatorId) return false;
+
+    if (_currentUid == _creatorId) {
+      return true;
+    }
+
+    if (_adminIds.contains(_currentUid)) {
+      return !_adminIds.contains(member.uid);
+    }
+
+    return false;
+  }
+
+  bool _canRemoveAdmin(_MemberInfo member) {
+    return _currentUid == _creatorId &&
+        member.uid != _creatorId &&
+        _adminIds.contains(member.uid);
+  }
+
+  bool _canMakeAdmin(_MemberInfo member) {
+    if (_currentUid == null) return false;
+    return member.uid != _creatorId &&
+        !_adminIds.contains(member.uid) &&
+        (_currentUid == _creatorId || _adminIds.contains(_currentUid));
   }
 
   void _showMemberOptions(BuildContext context, _MemberInfo member) {
@@ -211,7 +265,7 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
             Divider(color: whiteColor.withOpacity(0.07), height: 1),
             const SizedBox(height: 8),
 
-            if (_currentUid == _creatorId || !_adminIds.contains(member.uid))
+            if (_canRemoveUser(member))
               Row(
                 children: [
                   Expanded(
@@ -220,15 +274,13 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                       labelColor: Colors.redAccent,
                       onTap: () {
                         Navigator.pop(context);
-                        _handleMemberAction(member, 'kick');
+                        _handleMemberAction(member, 'remove_user');
                       },
                     ),
                   ),
                 ],
               ),
-            if (_currentUid == _creatorId &&
-                member.uid != _creatorId &&
-                _adminIds.contains(member.uid))
+            if (_canRemoveAdmin(member))
               Row(
                 children: [
                   Expanded(
@@ -243,7 +295,7 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                   ),
                 ],
               ),
-            if (member.uid != _creatorId && !_adminIds.contains(member.uid))
+            if (_canMakeAdmin(member))
               Row(
                 children: [
                   Expanded(
@@ -324,7 +376,7 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
             child: Text(
-              '${widget.memberIds.length} members',
+              '${widget.memberIds.where((id) => !_removedMemberIds.contains(id)).length} members',
               style: TextStyle(
                 color: Colors.grey.shade500,
                 fontSize: 12,
@@ -344,7 +396,9 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                   );
                 }
 
-                final members = snapshot.data ?? [];
+                final members = (snapshot.data ?? [])
+                    .where((member) => !_removedMemberIds.contains(member.uid))
+                    .toList();
                 if (members.isEmpty) {
                   return const Center(
                     child: Text(

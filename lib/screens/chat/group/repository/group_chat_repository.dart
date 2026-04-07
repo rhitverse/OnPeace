@@ -864,6 +864,62 @@ class GroupChatRepository {
     }
   }
 
+  Future<void> forwardMedia({
+    required String groupId,
+    required String senderId,
+    required String senderName,
+    required String senderProfilePic,
+    required String mediaUrl,
+    required String mediaType,
+    String? fileName,
+    int? fileSize,
+  }) async {
+    try {
+      await _createGroupIfNotExists(groupId);
+
+      String encryptedUrl = mediaUrl;
+      final senderPublicKey =
+          (await _firestore.collection('users').doc(senderId).get())
+              .data()?['publicKey'];
+
+      if (senderPublicKey != null) {
+        encryptedUrl = await _encryption.encryptMessage(
+          mediaUrl,
+          senderPublicKey,
+        );
+      }
+
+      await _firestore
+          .collection('GroupChats')
+          .doc(groupId)
+          .collection('messages')
+          .add({
+            'senderId': senderId,
+            'senderName': senderName,
+            'senderProfilePic': senderProfilePic,
+            'text': '',
+            'mediaUrl': encryptedUrl,
+            'mediaType': mediaType,
+            if (fileName != null) 'fileName': fileName,
+            if (fileSize != null) 'fileSize': fileSize,
+            'time': FieldValue.serverTimestamp(),
+          });
+
+      final displayText = mediaType == 'image'
+          ? '🖼️ Photo'
+          : mediaType == 'video'
+          ? '🎥 Video'
+          : mediaType == 'audio'
+          ? '🎵 Audio'
+          : '📎 File';
+
+      await _updateLastMessage(groupId, senderId, senderName, displayText);
+    } catch (e) {
+      debugPrint('Error forwarding media to group: $e');
+      rethrow;
+    }
+  }
+
   Future<void> _updateLastMessage(
     String groupId,
     String senderId,

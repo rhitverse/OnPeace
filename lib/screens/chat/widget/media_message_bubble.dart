@@ -652,7 +652,7 @@ class _MediaMessageBubbleState extends State<MediaMessageBubble> {
         width: maxWidth,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.grey[900],
+          color: fileContentDark,
           borderRadius: BorderRadius.circular(15),
         ),
         child: Column(
