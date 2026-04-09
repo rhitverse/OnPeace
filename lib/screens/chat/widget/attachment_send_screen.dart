@@ -107,7 +107,9 @@ class _AttachmentSendScreenState extends ConsumerState<AttachmentSendScreen> {
 
   String _getMediaType(String fileName) {
     final ext = fileName.split('.').last.toLowerCase();
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].contains(ext)) {
+    if (ext == 'gif') {
+      return 'gif';
+    } else if (['jpg', 'jpeg', 'png', 'webp'].contains(ext)) {
       return 'image';
     } else if (['mp4', 'avi', 'mkv', 'mov', 'flv'].contains(ext)) {
       return 'video';

@@ -26,6 +26,13 @@ class ChatRepository {
           final List<Map<String, dynamic>> messages = [];
           for (final doc in snap.docs) {
             final data = doc.data();
+
+            // Skip if message is deleted for current user
+            final deletedFor = data['deletedFor'] as List<dynamic>? ?? [];
+            if (deletedFor.contains(currentUid)) {
+              continue;
+            }
+
             final senderId = data['senderId'] ?? '';
             DateTime time;
             try {
@@ -65,29 +72,22 @@ class ChatRepository {
 
             String? decryptedMediaUrl;
             if (data.containsKey('mediaUrl') && data['mediaUrl'] != null) {
-              try {
-                if (senderId == currentUid) {
-                  if (data.containsKey('mediaUrlSenderCopy') &&
-                      data['mediaUrlSenderCopy'] != null) {
-                    decryptedMediaUrl = await _encryption.decryptMessage(
-                      data['mediaUrlSenderCopy'],
-                      currentUid,
-                    );
-                  } else {
-                    decryptedMediaUrl = data['mediaUrl'];
-                  }
-                } else {
-                  if (data.containsKey('mediaUrl') &&
-                      data['mediaUrl'] != null) {
-                    decryptedMediaUrl = await _encryption.decryptMessage(
-                      data['mediaUrl'],
-                      currentUid,
-                    );
-                  }
+              final mediaUrlStr = data['mediaUrl'] as String;
+              // Check if it's already a Cloudinary URL (not encrypted)
+              if (mediaUrlStr.contains('cloudinary') ||
+                  mediaUrlStr.startsWith('http')) {
+                decryptedMediaUrl = mediaUrlStr;
+              } else {
+                // Try to decrypt if not a public URL
+                try {
+                  decryptedMediaUrl = await _encryption.decryptMessage(
+                    mediaUrlStr,
+                    currentUid,
+                  );
+                } catch (e) {
+                  debugPrint('Error decrypting mediaUrl: $e');
+                  decryptedMediaUrl = mediaUrlStr;
                 }
-              } catch (e) {
-                debugPrint('Error decryoting mediaUrl: $e');
-                decryptedMediaUrl = data['mediaUrl'];
               }
             }
 
@@ -188,31 +188,6 @@ class ChatRepository {
       final fileSize = await imageFile.length();
       final fileName = imageFile.path.split('/').last;
 
-      final results = await Future.wait([
-        _firestore.collection('users').doc(receiverId).get(),
-        _firestore.collection('users').doc(senderId).get(),
-      ]);
-
-      final receiverPublicKey = results[0].data()?['publicKey'];
-      final senderPublicKey = results[1].data()?['publicKey'];
-
-      String encryptedUrlForReceiver = mediaUrl;
-      String encryptedUrlForSender = mediaUrl;
-
-      if (receiverPublicKey != null) {
-        encryptedUrlForReceiver = await _encryption.encryptMessage(
-          mediaUrl,
-          receiverPublicKey,
-        );
-      }
-
-      if (senderPublicKey != null) {
-        encryptedUrlForSender = await _encryption.encryptMessage(
-          mediaUrl,
-          senderPublicKey,
-        );
-      }
-
       await _firestore
           .collection('Chats')
           .doc(chatId)
@@ -220,8 +195,7 @@ class ChatRepository {
           .add({
             'senderId': senderId,
             'receiverId': receiverId,
-            'mediaUrl': encryptedUrlForReceiver,
-            'mediaUrlSenderCopy': encryptedUrlForSender,
+            'mediaUrl': mediaUrl,
             'mediaType': 'image',
             'fileName': fileName,
             'fileSize': fileSize,
@@ -262,31 +236,6 @@ class ChatRepository {
       final fileSize = await imageFile.length();
       final fileName = imageFile.path.split('/').last;
 
-      final results = await Future.wait([
-        _firestore.collection('users').doc(receiverId).get(),
-        _firestore.collection('users').doc(senderId).get(),
-      ]);
-
-      final receiverPublicKey = results[0].data()?['publicKey'];
-      final senderPublicKey = results[1].data()?['publicKey'];
-
-      String encryptedUrlForReceiver = mediaUrl;
-      String encryptedUrlForSender = mediaUrl;
-
-      if (receiverPublicKey != null) {
-        encryptedUrlForReceiver = await _encryption.encryptMessage(
-          mediaUrl,
-          receiverPublicKey,
-        );
-      }
-
-      if (senderPublicKey != null) {
-        encryptedUrlForSender = await _encryption.encryptMessage(
-          mediaUrl,
-          senderPublicKey,
-        );
-      }
-
       final docRef = await _firestore
           .collection('Chats')
           .doc(chatId)
@@ -294,8 +243,7 @@ class ChatRepository {
           .add({
             'senderId': senderId,
             'receiverId': receiverId,
-            'mediaUrl': encryptedUrlForReceiver,
-            'mediaUrlSenderCopy': encryptedUrlForSender,
+            'mediaUrl': mediaUrl,
             'mediaType': 'image',
             'fileName': fileName,
             'fileSize': fileSize,
@@ -338,31 +286,6 @@ class ChatRepository {
       final fileSize = await videoFile.length();
       final fileName = videoFile.path.split('/').last;
 
-      final results = await Future.wait([
-        _firestore.collection('users').doc(receiverId).get(),
-        _firestore.collection('users').doc(senderId).get(),
-      ]);
-
-      final receiverPublicKey = results[0].data()?['publicKey'];
-      final senderPublicKey = results[1].data()?['publicKey'];
-
-      String encryptedUrlForReceiver = mediaUrl;
-      String encryptedUrlForSender = mediaUrl;
-
-      if (receiverPublicKey != null) {
-        encryptedUrlForReceiver = await _encryption.encryptMessage(
-          mediaUrl,
-          receiverPublicKey,
-        );
-      }
-
-      if (senderPublicKey != null) {
-        encryptedUrlForSender = await _encryption.encryptMessage(
-          mediaUrl,
-          senderPublicKey,
-        );
-      }
-
       await _firestore
           .collection('Chats')
           .doc(chatId)
@@ -370,8 +293,7 @@ class ChatRepository {
           .add({
             'senderId': senderId,
             'receiverId': receiverId,
-            'mediaUrl': encryptedUrlForReceiver,
-            'mediaUrlSenderCopy': encryptedUrlForSender,
+            'mediaUrl': mediaUrl,
             'mediaType': 'video',
             'fileName': fileName,
             'fileSize': fileSize,
@@ -414,31 +336,6 @@ class ChatRepository {
       final fileSize = await videoFile.length();
       final fileName = videoFile.path.split('/').last;
 
-      final results = await Future.wait([
-        _firestore.collection('users').doc(receiverId).get(),
-        _firestore.collection('users').doc(senderId).get(),
-      ]);
-
-      final receiverPublicKey = results[0].data()?['publicKey'];
-      final senderPublicKey = results[1].data()?['publicKey'];
-
-      String encryptedUrlForReceiver = mediaUrl;
-      String encryptedUrlForSender = mediaUrl;
-
-      if (receiverPublicKey != null) {
-        encryptedUrlForReceiver = await _encryption.encryptMessage(
-          mediaUrl,
-          receiverPublicKey,
-        );
-      }
-
-      if (senderPublicKey != null) {
-        encryptedUrlForSender = await _encryption.encryptMessage(
-          mediaUrl,
-          senderPublicKey,
-        );
-      }
-
       final docRef = await _firestore
           .collection('Chats')
           .doc(chatId)
@@ -446,8 +343,7 @@ class ChatRepository {
           .add({
             'senderId': senderId,
             'receiverId': receiverId,
-            'mediaUrl': encryptedUrlForReceiver,
-            'mediaUrlSenderCopy': encryptedUrlForSender,
+            'mediaUrl': mediaUrl,
             'mediaType': 'video',
             'fileName': fileName,
             'fileSize': fileSize,
@@ -597,31 +493,6 @@ class ChatRepository {
       final fileSize = await file.length();
       final fileName = file.path.split('/').last;
 
-      final results = await Future.wait([
-        _firestore.collection('users').doc(receiverId).get(),
-        _firestore.collection('users').doc(senderId).get(),
-      ]);
-
-      final receiverPublicKey = results[0].data()?['publicKey'];
-      final senderPublicKey = results[1].data()?['publicKey'];
-
-      String encryptedUrlForReceiver = fileUrl;
-      String encryptedUrlForSender = fileUrl;
-
-      if (receiverPublicKey != null) {
-        encryptedUrlForReceiver = await _encryption.encryptMessage(
-          fileUrl,
-          receiverPublicKey,
-        );
-      }
-
-      if (senderPublicKey != null) {
-        encryptedUrlForSender = await _encryption.encryptMessage(
-          fileUrl,
-          senderPublicKey,
-        );
-      }
-
       await _firestore
           .collection('Chats')
           .doc(chatId)
@@ -629,8 +500,7 @@ class ChatRepository {
           .add({
             'senderId': senderId,
             'receiverId': receiverId,
-            'mediaUrl': encryptedUrlForReceiver,
-            'mediaUrlSenderCopy': encryptedUrlForSender,
+            'mediaUrl': fileUrl,
             'mediaType': fileType,
             'fileName': fileName,
             'fileSize': fileSize,
@@ -688,31 +558,6 @@ class ChatRepository {
       final fileSize = await file.length();
       final fileName = file.path.split('/').last;
 
-      final results = await Future.wait([
-        _firestore.collection('users').doc(receiverId).get(),
-        _firestore.collection('users').doc(senderId).get(),
-      ]);
-
-      final receiverPublicKey = results[0].data()?['publicKey'];
-      final senderPublicKey = results[1].data()?['publicKey'];
-
-      String encryptedUrlForReceiver = fileUrl;
-      String encryptedUrlForSender = fileUrl;
-
-      if (receiverPublicKey != null) {
-        encryptedUrlForReceiver = await _encryption.encryptMessage(
-          fileUrl,
-          receiverPublicKey,
-        );
-      }
-
-      if (senderPublicKey != null) {
-        encryptedUrlForSender = await _encryption.encryptMessage(
-          fileUrl,
-          senderPublicKey,
-        );
-      }
-
       final docRef = await _firestore
           .collection('Chats')
           .doc(chatId)
@@ -720,8 +565,7 @@ class ChatRepository {
           .add({
             'senderId': senderId,
             'receiverId': receiverId,
-            'mediaUrl': encryptedUrlForReceiver,
-            'mediaUrlSenderCopy': encryptedUrlForSender,
+            'mediaUrl': fileUrl,
             'mediaType': fileType,
             'fileName': fileName,
             'fileSize': fileSize,
@@ -777,29 +621,7 @@ class ChatRepository {
     try {
       debugPrint('Sending GIF...');
       await _createChatIfNotExists(chatId, senderId, receiverId);
-      final results = await Future.wait([
-        _firestore.collection('users').doc(receiverId).get(),
-        _firestore.collection('users').doc(senderId).get(),
-      ]);
 
-      final receiverPublicKey = results[0].data()?['publicKey'];
-      final senderPublicKey = results[1].data()?['publicKey'];
-
-      String encryptedUrlForReceiver = gifUrl;
-      String encryptedUrlForSender = gifUrl;
-
-      if (receiverPublicKey != null) {
-        encryptedUrlForReceiver = await _encryption.encryptMessage(
-          gifUrl,
-          receiverPublicKey,
-        );
-      }
-      if (senderPublicKey != null) {
-        encryptedUrlForSender = await _encryption.encryptMessage(
-          gifUrl,
-          senderPublicKey,
-        );
-      }
       await _firestore
           .collection('Chats')
           .doc(chatId)
@@ -807,13 +629,13 @@ class ChatRepository {
           .add({
             'senderId': senderId,
             'receiverId': receiverId,
-            'mediaUrl': encryptedUrlForReceiver,
-            'mediaUrlSenderCopy': encryptedUrlForSender,
+            'mediaUrl': gifUrl,
             'mediaType': 'gif',
             'fileName': 'GIF',
             'isRead': false,
             'time': FieldValue.serverTimestamp(),
           });
+
       await _updateLastMessage(chatId, senderId, receiverId, 'GIF');
       debugPrint('GiF send succesfully');
     } catch (e) {
@@ -931,6 +753,8 @@ class ChatRepository {
 
       final displayText = mediaType == 'image'
           ? '🖼️ Photo'
+          : mediaType == 'gif'
+          ? '🎬 GIF'
           : mediaType == 'video'
           ? '🎥 Video'
           : mediaType == 'audio'
@@ -940,6 +764,80 @@ class ChatRepository {
       await _updateLastMessage(chatId, senderId, receiverId, displayText);
     } catch (e) {
       debugPrint('Error forwarding media: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> deleteMessage({
+    required String chatId,
+    required String messageId,
+    String? mediaUrl,
+    bool isPermanent = true,
+  }) async {
+    try {
+      final currentUid = FirebaseAuth.instance.currentUser?.uid;
+      if (currentUid == null) return;
+
+      if (isPermanent) {
+        // Permanent deletion for sender's own message
+        // Delete media from Cloudinary if exists
+        if (mediaUrl != null && mediaUrl.isNotEmpty) {
+          try {
+            await _cloudinaryRepository.deleteFileFromCloudinary(mediaUrl);
+          } catch (e) {
+            debugPrint('Error deleting media from Cloudinary: $e');
+          }
+        }
+
+        // Delete message from Firestore
+        await _firestore
+            .collection('Chats')
+            .doc(chatId)
+            .collection('messages')
+            .doc(messageId)
+            .delete();
+
+        debugPrint('Message permanently deleted: $messageId');
+      } else {
+        // Soft delete for receiver (mark as deleted for current user only)
+        await _firestore
+            .collection('Chats')
+            .doc(chatId)
+            .collection('messages')
+            .doc(messageId)
+            .update({
+              'deletedFor': FieldValue.arrayUnion([currentUid]),
+            });
+
+        debugPrint('Message marked as deleted for user: $currentUid');
+      }
+    } catch (e) {
+      debugPrint('Error deleting message: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> softDeleteMessage({
+    required String chatId,
+    required String messageId,
+  }) async {
+    try {
+      final currentUid = FirebaseAuth.instance.currentUser?.uid;
+      if (currentUid == null) return;
+
+      // Soft delete only - add user to deletedFor array
+      await _firestore
+          .collection('Chats')
+          .doc(chatId)
+          .collection('messages')
+          .doc(messageId)
+          .update({
+            'deletedFor': FieldValue.arrayUnion([currentUid]),
+          });
+
+      debugPrint('Message marked as deleted for user: $currentUid');
+    } catch (e) {
+      debugPrint('Error soft deleting message: $e');
       rethrow;
     }
   }

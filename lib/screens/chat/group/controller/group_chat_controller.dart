@@ -343,4 +343,35 @@ class GroupChatController {
       rethrow;
     }
   }
+
+  Future<void> deleteMessage({
+    required String groupId,
+    required String messageId,
+    String? mediaUrl,
+  }) async {
+    try {
+      await _groupChatRepository.deleteMessage(
+        groupId: groupId,
+        messageId: messageId,
+        mediaUrl: mediaUrl,
+        isPermanent: true,
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> softDeleteMessage({
+    required String groupId,
+    required String messageId,
+  }) async {
+    try {
+      await _groupChatRepository.softDeleteMessage(
+        groupId: groupId,
+        messageId: messageId,
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
 }

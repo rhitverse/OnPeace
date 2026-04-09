@@ -442,6 +442,9 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                         isMe
                             ? GestureDetector(
                                 onLongPress: () {
+                                  final chatController = ref.read(
+                                    chatControllerProvider,
+                                  );
                                   MessageActionMenu.show(
                                     context: context,
                                     messageData: {
@@ -450,8 +453,17 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                                       'mediaType': mediaType,
                                       'fileName': fileName,
                                       'fileSize': fileSize,
+                                      'time': timeStr,
+                                      'senderId': senderId,
+                                      'currentUserId': currentUserId,
                                     },
                                     onReply: null,
+                                    onDelete: () =>
+                                        chatController.deleteMessage(
+                                          chatId: widget.chatId,
+                                          messageId: messageId,
+                                          mediaUrl: mediaUrl,
+                                        ),
                                   );
                                 },
                                 child: SenderMessage(
@@ -472,6 +484,9 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                               )
                             : GestureDetector(
                                 onLongPress: () {
+                                  final chatController = ref.read(
+                                    chatControllerProvider,
+                                  );
                                   MessageActionMenu.show(
                                     context: context,
                                     messageData: {
@@ -480,8 +495,16 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                                       'mediaType': mediaType,
                                       'fileName': fileName,
                                       'fileSize': fileSize,
+                                      'time': timeStr,
+                                      'senderId': senderId,
+                                      'currentUserId': currentUserId,
                                     },
                                     onReply: null,
+                                    onDelete: () =>
+                                        chatController.softDeleteMessage(
+                                          chatId: widget.chatId,
+                                          messageId: messageId,
+                                        ),
                                   );
                                 },
                                 child: ReceiverMessage(

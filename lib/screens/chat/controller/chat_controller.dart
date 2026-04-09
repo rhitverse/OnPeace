@@ -263,4 +263,35 @@ class ChatController {
       rethrow;
     }
   }
+
+  Future<void> deleteMessage({
+    required String chatId,
+    required String messageId,
+    String? mediaUrl,
+  }) async {
+    try {
+      await _chatRepository.deleteMessage(
+        chatId: chatId,
+        messageId: messageId,
+        mediaUrl: mediaUrl,
+        isPermanent: true,
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> softDeleteMessage({
+    required String chatId,
+    required String messageId,
+  }) async {
+    try {
+      await _chatRepository.softDeleteMessage(
+        chatId: chatId,
+        messageId: messageId,
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
 }

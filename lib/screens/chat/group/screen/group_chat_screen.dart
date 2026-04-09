@@ -506,6 +506,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                             if (isMe)
                               GestureDetector(
                                 onLongPress: () {
+                                  final groupChatController = ref.read(
+                                    groupChatControllerProvider,
+                                  );
                                   MessageActionMenu.show(
                                     context: context,
                                     messageData: {
@@ -514,8 +517,17 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                                       'mediaType': mediaType,
                                       'fileName': fileName,
                                       'fileSize': fileSize,
+                                      'time': timeStr,
+                                      'senderId': senderId,
+                                      'currentUserId': currentUserId,
                                     },
                                     onReply: null,
+                                    onDelete: () =>
+                                        groupChatController.deleteMessage(
+                                          groupId: widget.groupId,
+                                          messageId: messageId,
+                                          mediaUrl: mediaUrl,
+                                        ),
                                   );
                                 },
                                 child: SenderMessage(
@@ -582,6 +594,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                                     ),
                                   GestureDetector(
                                     onLongPress: () {
+                                      final groupChatController = ref.read(
+                                        groupChatControllerProvider,
+                                      );
                                       MessageActionMenu.show(
                                         context: context,
                                         messageData: {
@@ -590,8 +605,16 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                                           'mediaType': mediaType,
                                           'fileName': fileName,
                                           'fileSize': fileSize,
+                                          'time': timeStr,
+                                          'senderId': senderId,
+                                          'currentUserId': currentUserId,
                                         },
                                         onReply: null,
+                                        onDelete: () => groupChatController
+                                            .softDeleteMessage(
+                                              groupId: widget.groupId,
+                                              messageId: messageId,
+                                            ),
                                       );
                                     },
                                     child: ReceiverMessage(

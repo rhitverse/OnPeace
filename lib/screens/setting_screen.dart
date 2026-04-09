@@ -24,8 +24,11 @@ class SettingScreen extends ConsumerWidget {
     final shouldLogout = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xff1e2023),
-        title: const Text('Logout', style: TextStyle(color: whiteColor)),
+        backgroundColor: fileContentDark,
+        title: const Text(
+          'Logout',
+          style: TextStyle(color: whiteColor, fontWeight: FontWeight.bold),
+        ),
         content: const Text(
           'Are you sure you want to logout?',
           style: TextStyle(color: whiteColor),

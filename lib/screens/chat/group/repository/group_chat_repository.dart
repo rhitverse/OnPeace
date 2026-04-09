@@ -28,6 +28,13 @@ class GroupChatRepository {
 
           for (final doc in snap.docs) {
             final data = doc.data();
+
+            // Skip if message is deleted for current user
+            final deletedFor = data['deletedFor'] as List<dynamic>? ?? [];
+            if (deletedFor.contains(currentUid)) {
+              continue;
+            }
+
             final senderId = data['senderId'] ?? '';
             final senderName = data['senderName'] ?? '';
             final senderProfilePic = data['senderProfilePic'] ?? '';
@@ -55,14 +62,22 @@ class GroupChatRepository {
 
             String? decryptedMediaUrl;
             if (data.containsKey('mediaUrl') && data['mediaUrl'] != null) {
-              try {
-                decryptedMediaUrl = await _encryption.decryptMessage(
-                  data['mediaUrl'],
-                  currentUid,
-                );
-              } catch (e) {
-                debugPrint('Error decrypting mediaUrl: $e');
-                decryptedMediaUrl = data['mediaUrl'];
+              final mediaUrlStr = data['mediaUrl'] as String;
+              // Check if it's already a Cloudinary URL (not encrypted)
+              if (mediaUrlStr.contains('cloudinary') ||
+                  mediaUrlStr.startsWith('http')) {
+                decryptedMediaUrl = mediaUrlStr;
+              } else {
+                // Try to decrypt if not a public URL
+                try {
+                  decryptedMediaUrl = await _encryption.decryptMessage(
+                    mediaUrlStr,
+                    currentUid,
+                  );
+                } catch (e) {
+                  debugPrint('Error decrypting mediaUrl: $e');
+                  decryptedMediaUrl = mediaUrlStr;
+                }
               }
             }
 
@@ -149,18 +164,6 @@ class GroupChatRepository {
       final fileSize = await imageFile.length();
       final fileName = imageFile.path.split('/').last;
 
-      String encryptedUrl = mediaUrl;
-      final senderPublicKey =
-          (await _firestore.collection('users').doc(senderId).get())
-              .data()?['publicKey'];
-
-      if (senderPublicKey != null) {
-        encryptedUrl = await _encryption.encryptMessage(
-          mediaUrl,
-          senderPublicKey,
-        );
-      }
-
       await _firestore
           .collection('GroupChats')
           .doc(groupId)
@@ -169,7 +172,7 @@ class GroupChatRepository {
             'senderId': senderId,
             'senderName': senderName,
             'senderProfilePic': senderProfilePic,
-            'mediaUrl': encryptedUrl,
+            'mediaUrl': mediaUrl,
             'mediaType': 'image',
             'fileName': fileName,
             'fileSize': fileSize,
@@ -208,18 +211,6 @@ class GroupChatRepository {
       final fileSize = await imageFile.length();
       final fileName = imageFile.path.split('/').last;
 
-      String encryptedUrl = mediaUrl;
-      final senderPublicKey =
-          (await _firestore.collection('users').doc(senderId).get())
-              .data()?['publicKey'];
-
-      if (senderPublicKey != null) {
-        encryptedUrl = await _encryption.encryptMessage(
-          mediaUrl,
-          senderPublicKey,
-        );
-      }
-
       final docRef = await _firestore
           .collection('GroupChats')
           .doc(groupId)
@@ -228,7 +219,7 @@ class GroupChatRepository {
             'senderId': senderId,
             'senderName': senderName,
             'senderProfilePic': senderProfilePic,
-            'mediaUrl': encryptedUrl,
+            'mediaUrl': mediaUrl,
             'mediaType': 'image',
             'fileName': fileName,
             'fileSize': fileSize,
@@ -268,18 +259,6 @@ class GroupChatRepository {
       final fileSize = await videoFile.length();
       final fileName = videoFile.path.split('/').last;
 
-      String encryptedUrl = mediaUrl;
-      final senderPublicKey =
-          (await _firestore.collection('users').doc(senderId).get())
-              .data()?['publicKey'];
-
-      if (senderPublicKey != null) {
-        encryptedUrl = await _encryption.encryptMessage(
-          mediaUrl,
-          senderPublicKey,
-        );
-      }
-
       await _firestore
           .collection('GroupChats')
           .doc(groupId)
@@ -288,7 +267,7 @@ class GroupChatRepository {
             'senderId': senderId,
             'senderName': senderName,
             'senderProfilePic': senderProfilePic,
-            'mediaUrl': encryptedUrl,
+            'mediaUrl': mediaUrl,
             'mediaType': 'video',
             'fileName': fileName,
             'fileSize': fileSize,
@@ -329,18 +308,6 @@ class GroupChatRepository {
       final fileSize = await videoFile.length();
       final fileName = videoFile.path.split('/').last;
 
-      String encryptedUrl = mediaUrl;
-      final senderPublicKey =
-          (await _firestore.collection('users').doc(senderId).get())
-              .data()?['publicKey'];
-
-      if (senderPublicKey != null) {
-        encryptedUrl = await _encryption.encryptMessage(
-          mediaUrl,
-          senderPublicKey,
-        );
-      }
-
       final docRef = await _firestore
           .collection('GroupChats')
           .doc(groupId)
@@ -349,7 +316,7 @@ class GroupChatRepository {
             'senderId': senderId,
             'senderName': senderName,
             'senderProfilePic': senderProfilePic,
-            'mediaUrl': encryptedUrl,
+            'mediaUrl': mediaUrl,
             'mediaType': 'video',
             'fileName': fileName,
             'fileSize': fileSize,
@@ -402,18 +369,6 @@ class GroupChatRepository {
       final fileSize = await file.length();
       final fileName = file.path.split('/').last;
 
-      String encryptedUrl = fileUrl;
-      final senderPublicKey =
-          (await _firestore.collection('users').doc(senderId).get())
-              .data()?['publicKey'];
-
-      if (senderPublicKey != null) {
-        encryptedUrl = await _encryption.encryptMessage(
-          fileUrl,
-          senderPublicKey,
-        );
-      }
-
       await _firestore
           .collection('GroupChats')
           .doc(groupId)
@@ -422,7 +377,7 @@ class GroupChatRepository {
             'senderId': senderId,
             'senderName': senderName,
             'senderProfilePic': senderProfilePic,
-            'mediaUrl': encryptedUrl,
+            'mediaUrl': fileUrl,
             'mediaType': fileType,
             'fileName': fileName,
             'fileSize': fileSize,
@@ -479,18 +434,6 @@ class GroupChatRepository {
       final fileSize = await file.length();
       final fileName = file.path.split('/').last;
 
-      String encryptedUrl = fileUrl;
-      final senderPublicKey =
-          (await _firestore.collection('users').doc(senderId).get())
-              .data()?['publicKey'];
-
-      if (senderPublicKey != null) {
-        encryptedUrl = await _encryption.encryptMessage(
-          fileUrl,
-          senderPublicKey,
-        );
-      }
-
       final docRef = await _firestore
           .collection('GroupChats')
           .doc(groupId)
@@ -499,7 +442,7 @@ class GroupChatRepository {
             'senderId': senderId,
             'senderName': senderName,
             'senderProfilePic': senderProfilePic,
-            'mediaUrl': encryptedUrl,
+            'mediaUrl': fileUrl,
             'mediaType': fileType,
             'fileName': fileName,
             'fileSize': fileSize,
@@ -532,18 +475,6 @@ class GroupChatRepository {
       debugPrint('Sending group GIF...');
       await _createGroupIfNotExists(groupId);
 
-      String encryptedUrl = gifUrl;
-      final senderPublicKey =
-          (await _firestore.collection('users').doc(senderId).get())
-              .data()?['publicKey'];
-
-      if (senderPublicKey != null) {
-        encryptedUrl = await _encryption.encryptMessage(
-          gifUrl,
-          senderPublicKey,
-        );
-      }
-
       await _firestore
           .collection('GroupChats')
           .doc(groupId)
@@ -552,7 +483,7 @@ class GroupChatRepository {
             'senderId': senderId,
             'senderName': senderName,
             'senderProfilePic': senderProfilePic,
-            'mediaUrl': encryptedUrl,
+            'mediaUrl': gifUrl,
             'mediaType': 'gif',
             'fileName': 'GIF',
             'isRead': false,
@@ -591,18 +522,6 @@ class GroupChatRepository {
       final fileSize = await audioFile.length();
       final fileName = audioFile.path.split('/').last;
 
-      String encryptedUrl = mediaUrl;
-      final senderPublicKey =
-          (await _firestore.collection('users').doc(senderId).get())
-              .data()?['publicKey'];
-
-      if (senderPublicKey != null) {
-        encryptedUrl = await _encryption.encryptMessage(
-          mediaUrl,
-          senderPublicKey,
-        );
-      }
-
       await _firestore
           .collection('GroupChats')
           .doc(groupId)
@@ -611,7 +530,7 @@ class GroupChatRepository {
             'senderId': senderId,
             'senderName': senderName,
             'senderProfilePic': senderProfilePic,
-            'mediaUrl': encryptedUrl,
+            'mediaUrl': mediaUrl,
             'mediaType': 'audio',
             'fileName': fileName,
             'fileSize': fileSize,
@@ -729,6 +648,80 @@ class GroupChatRepository {
       debugPrint('Media deleted successfully');
     } catch (e) {
       debugPrint('Delete group media error: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> deleteMessage({
+    required String groupId,
+    required String messageId,
+    String? mediaUrl,
+    bool isPermanent = true,
+  }) async {
+    try {
+      final currentUid = FirebaseAuth.instance.currentUser?.uid;
+      if (currentUid == null) return;
+
+      if (isPermanent) {
+        // Permanent deletion for sender's own message
+        // Delete media from Cloudinary if exists
+        if (mediaUrl != null && mediaUrl.isNotEmpty) {
+          try {
+            await _cloudinaryRepository.deleteFileFromCloudinary(mediaUrl);
+          } catch (e) {
+            debugPrint('Error deleting media from Cloudinary: $e');
+          }
+        }
+
+        // Delete message from Firestore
+        await _firestore
+            .collection('GroupChats')
+            .doc(groupId)
+            .collection('messages')
+            .doc(messageId)
+            .delete();
+
+        debugPrint('Group message permanently deleted: $messageId');
+      } else {
+        // Soft delete for receiver (mark as deleted for current user only)
+        await _firestore
+            .collection('GroupChats')
+            .doc(groupId)
+            .collection('messages')
+            .doc(messageId)
+            .update({
+              'deletedFor': FieldValue.arrayUnion([currentUid]),
+            });
+
+        debugPrint('Group message marked as deleted for user: $currentUid');
+      }
+    } catch (e) {
+      debugPrint('Delete group message error: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> softDeleteMessage({
+    required String groupId,
+    required String messageId,
+  }) async {
+    try {
+      final currentUid = FirebaseAuth.instance.currentUser?.uid;
+      if (currentUid == null) return;
+
+      // Soft delete only - add user to deletedFor array
+      await _firestore
+          .collection('GroupChats')
+          .doc(groupId)
+          .collection('messages')
+          .doc(messageId)
+          .update({
+            'deletedFor': FieldValue.arrayUnion([currentUid]),
+          });
+
+      debugPrint('Group message marked as deleted for user: $currentUid');
+    } catch (e) {
+      debugPrint('Soft delete group message error: $e');
       rethrow;
     }
   }
@@ -877,18 +870,6 @@ class GroupChatRepository {
     try {
       await _createGroupIfNotExists(groupId);
 
-      String encryptedUrl = mediaUrl;
-      final senderPublicKey =
-          (await _firestore.collection('users').doc(senderId).get())
-              .data()?['publicKey'];
-
-      if (senderPublicKey != null) {
-        encryptedUrl = await _encryption.encryptMessage(
-          mediaUrl,
-          senderPublicKey,
-        );
-      }
-
       await _firestore
           .collection('GroupChats')
           .doc(groupId)
@@ -898,7 +879,7 @@ class GroupChatRepository {
             'senderName': senderName,
             'senderProfilePic': senderProfilePic,
             'text': '',
-            'mediaUrl': encryptedUrl,
+            'mediaUrl': mediaUrl,
             'mediaType': mediaType,
             if (fileName != null) 'fileName': fileName,
             if (fileSize != null) 'fileSize': fileSize,
@@ -907,6 +888,8 @@ class GroupChatRepository {
 
       final displayText = mediaType == 'image'
           ? '🖼️ Photo'
+          : mediaType == 'gif'
+          ? '🎬 GIF'
           : mediaType == 'video'
           ? '🎥 Video'
           : mediaType == 'audio'
