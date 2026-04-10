@@ -43,6 +43,40 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
   String groupName = '';
   String groupProfilePic = '';
 
+  // Reply management
+  String? replyingToMessageId;
+  String? replyingToText;
+  String? replyingToMediaUrl;
+  String? replyingToMediaType;
+  String? replyingToSenderName = '';
+
+  void _setReply({
+    required String messageId,
+    required String text,
+    String? mediaUrl,
+    String? mediaType,
+    required String senderName,
+  }) {
+    setState(() {
+      replyingToMessageId = messageId;
+      replyingToText = text;
+      replyingToMediaUrl = mediaUrl;
+      replyingToMediaType = mediaType;
+      replyingToSenderName = senderName;
+    });
+    focusNode.requestFocus();
+  }
+
+  void _clearReply() {
+    setState(() {
+      replyingToMessageId = null;
+      replyingToText = null;
+      replyingToMediaUrl = null;
+      replyingToMediaType = null;
+      replyingToSenderName = '';
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -521,7 +555,13 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                                       'senderId': senderId,
                                       'currentUserId': currentUserId,
                                     },
-                                    onReply: null,
+                                    onReply: () => _setReply(
+                                      messageId: messageId,
+                                      text: text,
+                                      mediaUrl: mediaUrl,
+                                      mediaType: mediaType,
+                                      senderName: 'You',
+                                    ),
                                     onDelete: () =>
                                         groupChatController.deleteMessage(
                                           groupId: widget.groupId,
@@ -609,7 +649,13 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                                           'senderId': senderId,
                                           'currentUserId': currentUserId,
                                         },
-                                        onReply: null,
+                                        onReply: () => _setReply(
+                                          messageId: messageId,
+                                          text: text,
+                                          mediaUrl: mediaUrl,
+                                          mediaType: mediaType,
+                                          senderName: senderName,
+                                        ),
                                         onDelete: () => groupChatController
                                             .softDeleteMessage(
                                               groupId: widget.groupId,
@@ -641,6 +687,63 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
               },
             ),
           ),
+          if (replyingToMessageId != null)
+            Container(
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: searchBarColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: whiteColor.withOpacity(0.1),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.reply,
+                    color: uiColor,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Replying to ${replyingToSenderName ?? ''}',
+                          style: const TextStyle(
+                            color: whiteColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          replyingToText ?? '',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: whiteColor.withOpacity(0.7),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: _clearReply,
+                    child: Icon(
+                      Icons.close,
+                      color: whiteColor.withOpacity(0.5),
+                      size: 20,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           BottomChatField(
             controller: _messageController,
             focusNode: focusNode,

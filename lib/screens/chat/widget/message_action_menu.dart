@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:on_peace/colors.dart';
 import 'package:on_peace/screens/chat/forward/forward_messages_screen.dart';
 
@@ -11,6 +12,7 @@ class MessageActionMenu {
   }) {
     final overlay = Overlay.of(context);
     late OverlayEntry overlayEntry;
+    late OverlayEntry dismissEntry;
     bool isRemoved = false;
 
     // Get current user ID to check if this is sender's own message
@@ -23,6 +25,9 @@ class MessageActionMenu {
         isRemoved = true;
         try {
           overlayEntry.remove();
+        } catch (_) {}
+        try {
+          dismissEntry.remove();
         } catch (_) {}
       }
     }
@@ -71,37 +76,42 @@ class MessageActionMenu {
                   Divider(color: whiteColor.withOpacity(0.07), height: 1),
 
                   // Reply
-                  if (onReply != null)
-                    GestureDetector(
-                      onTap: () {
-                        removeOverlay();
+                  GestureDetector(
+                    onTap: () {
+                      removeOverlay();
+                      if (onReply != null) {
                         onReply();
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.reply,
+                      }
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      child: Row(
+                        children: [
+                          SvgPicture.asset(
+                            'assets/svg/reply.svg',
+                            width: 18,
+                            height: 18,
+                            colorFilter: const ColorFilter.mode(
+                              whiteColor,
+                              BlendMode.srcIn,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          const Text(
+                            'Reply',
+                            style: TextStyle(
                               color: whiteColor,
-                              size: 18,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
                             ),
-                            const SizedBox(width: 10),
-                            const Text(
-                              'Reply',
-                              style: TextStyle(
-                                color: whiteColor,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
+                  ),
 
                   // Copy
                   if ((messageData['text'] as String?)?.isNotEmpty ?? false)
@@ -135,7 +145,6 @@ class MessageActionMenu {
                       ),
                     ),
 
-                  // Forward
                   GestureDetector(
                     onTap: () {
                       removeOverlay();
@@ -156,10 +165,14 @@ class MessageActionMenu {
                       ),
                       child: Row(
                         children: [
-                          const Icon(
-                            Icons.share_outlined,
-                            color: whiteColor,
-                            size: 18,
+                          SvgPicture.asset(
+                            'assets/svg/forward.svg',
+                            width: 18,
+                            height: 18,
+                            colorFilter: const ColorFilter.mode(
+                              whiteColor,
+                              BlendMode.srcIn,
+                            ),
                           ),
                           const SizedBox(width: 10),
                           const Text(
@@ -175,7 +188,6 @@ class MessageActionMenu {
                     ),
                   ),
 
-                  // React
                   GestureDetector(
                     onTap: () {
                       removeOverlay();
@@ -187,10 +199,14 @@ class MessageActionMenu {
                       ),
                       child: Row(
                         children: [
-                          const Icon(
-                            Icons.emoji_emotions_outlined,
-                            color: whiteColor,
-                            size: 18,
+                          SvgPicture.asset(
+                            'assets/svg/reactEmoji.svg',
+                            width: 18,
+                            height: 18,
+                            colorFilter: const ColorFilter.mode(
+                              whiteColor,
+                              BlendMode.srcIn,
+                            ),
                           ),
                           const SizedBox(width: 10),
                           const Text(
@@ -206,7 +222,6 @@ class MessageActionMenu {
                     ),
                   ),
 
-                  // Download
                   if (messageData['mediaUrl'] != null &&
                       (messageData['mediaUrl'] as String).isNotEmpty)
                     GestureDetector(
@@ -220,10 +235,14 @@ class MessageActionMenu {
                         ),
                         child: Row(
                           children: [
-                            const Icon(
-                              Icons.download,
-                              color: whiteColor,
-                              size: 18,
+                            SvgPicture.asset(
+                              'assets/svg/download.svg',
+                              width: 18,
+                              height: 18,
+                              colorFilter: const ColorFilter.mode(
+                                whiteColor,
+                                BlendMode.srcIn,
+                              ),
                             ),
                             const SizedBox(width: 10),
                             const Text(
@@ -258,7 +277,15 @@ class MessageActionMenu {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.delete, color: Colors.red, size: 18),
+                          SvgPicture.asset(
+                            'assets/svg/delete.svg',
+                            width: 18,
+                            height: 18,
+                            colorFilter: const ColorFilter.mode(
+                              Colors.red,
+                              BlendMode.srcIn,
+                            ),
+                          ),
                           const SizedBox(width: 10),
                           Text(
                             isOwnMessage ? 'Delete' : 'Delete for you',
@@ -280,23 +307,25 @@ class MessageActionMenu {
       ),
     );
 
-    overlay.insert(overlayEntry);
-
-    // Dismiss on tap outside
-    Future.delayed(Duration.zero, () {
-      Navigator.of(context).push(
-        PageRouteBuilder(
-          opaque: false,
-          pageBuilder: (_, __, ___) => GestureDetector(
-            onTap: () {
-              removeOverlay();
-              Navigator.pop(context);
-            },
-            child: Container(color: Colors.transparent),
-          ),
+    // Create dismiss overlay layer first (will be behind the menu)
+    dismissEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        top: 0,
+        bottom: 0,
+        left: 0,
+        right: 0,
+        child: GestureDetector(
+          onTap: () {
+            removeOverlay();
+          },
+          child: Container(color: Colors.transparent),
         ),
-      );
-    });
+      ),
+    );
+
+    // Insert dismiss layer first so menu is on top
+    overlay.insert(dismissEntry);
+    overlay.insert(overlayEntry);
   }
 
   static String _formatMessageTime(dynamic timeValue) {
