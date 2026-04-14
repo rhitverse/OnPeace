@@ -43,7 +43,7 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
   FocusNode focusNode = FocusNode();
   String receiverDisplayName = '';
   String receiverProfilePic = '';
-  
+
   // Reply management
   String? replyingToMessageId;
   String? replyingToText;
@@ -575,61 +575,84 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
             ),
           ),
           if (replyingToMessageId != null)
-            Container(
-              padding: const EdgeInsets.all(12),
-              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: searchBarColor,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: whiteColor.withOpacity(0.1),
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.reply,
-                    color: uiColor,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Replying to ${replyingToSenderName ?? ''}',
-                          style: const TextStyle(
-                            color: whiteColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
+            Row(
+              children: [
+                Icon(Icons.reply, color: uiColor, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Replying to ${replyingToSenderName ?? ''}',
+                        style: const TextStyle(
+                          color: whiteColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
                         ),
-                        const SizedBox(height: 4),
+                      ),
+                      const SizedBox(height: 6),
+                      if (replyingToMediaType != null &&
+                          replyingToMediaType!.isNotEmpty)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: Container(
+                            constraints: const BoxConstraints(
+                              maxHeight: 50,
+                              maxWidth: 50,
+                            ),
+                            child: replyingToMediaType == 'image'
+                                ? Image.network(
+                                    replyingToMediaUrl ?? '',
+                                    fit: BoxFit.cover,
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            Container(
+                                              color: Colors.grey[700],
+                                              child: const Center(
+                                                child: Icon(
+                                                  Icons.image,
+                                                  color: whiteColor,
+                                                ),
+                                              ),
+                                            ),
+                                  )
+                                : Container(
+                                    color: Colors.grey[700],
+                                    child: Center(
+                                      child: Icon(
+                                        replyingToMediaType == 'video'
+                                            ? Icons.videocam
+                                            : Icons.attachment,
+                                        color: whiteColor,
+                                      ),
+                                    ),
+                                  ),
+                          ),
+                        )
+                      else
                         Text(
                           replyingToText ?? '',
-                          maxLines: 1,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: whiteColor.withOpacity(0.7),
-                            fontSize: 12,
+                            fontSize: 13,
                           ),
                         ),
-                      ],
-                    ),
+                    ],
                   ),
-                  GestureDetector(
-                    onTap: _clearReply,
-                    child: Icon(
-                      Icons.close,
-                      color: whiteColor.withOpacity(0.5),
-                      size: 20,
-                    ),
+                ),
+                GestureDetector(
+                  onTap: _clearReply,
+                  child: Icon(
+                    Icons.close,
+                    color: whiteColor.withOpacity(0.5),
+                    size: 20,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           BottomChatField(
             controller: _messageController,

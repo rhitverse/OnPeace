@@ -4,6 +4,7 @@ import 'package:on_peace/colors.dart';
 import 'package:on_peace/features/auth/controller/auth_controller.dart';
 import 'package:on_peace/features/auth/repository/auth_providers.dart';
 import 'package:on_peace/screens/user/registe_screen.dart';
+import 'package:on_peace/widgets/helpful_widgets/custom_messenger.dart';
 import 'package:on_peace/widgets/helpful_widgets/input_field.dart';
 import 'package:on_peace/common/utils/utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,6 +19,26 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
+  Future<void> handleForgotPassword() async {
+    final email = emailOrPhoneController.text.trim();
+    if (email.isEmpty) {
+      InfoPopup.show(context, 'Please enter your email to reset password.');
+      return;
+    }
+    if (!isEmail(email)) {
+      InfoPopup.show(context, 'Please enter a valid email address.');
+      return;
+    }
+    try {
+      await ref
+          .read(authControllerProvider)
+          .sendPasswordResetEmail(context: context, email: email);
+      CustomMessenger.show(context, 'Password reset link sent to your email.');
+    } catch (e) {
+      InfoPopup.show(context, 'Failed to send reset email.');
+    }
+  }
+
   final TextEditingController emailOrPhoneController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool isLoading = false;
@@ -145,18 +166,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             Align(
               alignment: Alignment.centerRight,
               child: TextButton(
-                onPressed: () {
-                  showSnackBar(
-                    context: context,
-                    content: 'Password reset feature coming soon!',
-                  );
-                },
-                child: Text(
+                onPressed: handleForgotPassword,
+                child: const Text(
                   "Forgot your password?",
                   style: TextStyle(color: Colors.black),
                 ),
               ),
             ),
+            // ...existing code...
             const SizedBox(height: 5),
             SizedBox(
               width: double.infinity,

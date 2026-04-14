@@ -14,6 +14,20 @@ import 'package:on_peace/screens/user/display_name.dart';
 import 'package:on_peace/widgets/helpful_widgets/info_popup.dart';
 
 class AuthRepository {
+  Future<void> sendPasswordResetEmail({
+    required BuildContext context,
+    required String email,
+  }) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+    } on FirebaseAuthException catch (e) {
+      if (context.mounted) {
+        InfoPopup.show(context, e.message ?? 'Failed to send reset email.');
+      }
+      rethrow;
+    }
+  }
+
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
   final GoogleSignIn _googleSignIn;

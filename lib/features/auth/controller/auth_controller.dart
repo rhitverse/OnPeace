@@ -16,6 +16,16 @@ final authControllerProvider = Provider(
 );
 
 class AuthController {
+  Future<void> sendPasswordResetEmail({
+    required BuildContext context,
+    required String email,
+  }) async {
+    await _authRepository.sendPasswordResetEmail(
+      context: context,
+      email: email,
+    );
+  }
+
   final AuthRepository _authRepository;
   final ProviderRef ref;
   AuthController({required AuthRepository authRepository, required this.ref})
