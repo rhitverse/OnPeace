@@ -1,15 +1,12 @@
-import 'dart:math';
-
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_holo_date_picker/flutter_holo_date_picker.dart';
 import 'package:on_peace/colors.dart';
 import 'package:on_peace/features/app/welcome/welcome_page.dart';
-import 'package:on_peace/features/auth/controller/auth_controller.dart';
 import 'package:on_peace/screens/user/display_name.dart';
-import 'package:on_peace/widgets/helpful_widgets/app_loader.dart';
 import 'package:on_peace/widgets/helpful_widgets/email_verfication_dialog.dart';
 import 'package:on_peace/widgets/helpful_widgets/info_popup.dart';
 import 'package:on_peace/widgets/helpful_widgets/input_field.dart';
@@ -23,20 +20,12 @@ class RegisteScreen extends ConsumerStatefulWidget {
 }
 
 class _RegisteScreenState extends ConsumerState<RegisteScreen> {
-  final nameController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
-  final confirmPasswordController = TextEditingController();
 
   DateTime? selectedDate;
-  bool receiveEmails = true;
   bool isLoading = false;
   String? errorText;
-
-  String generate6DigiCode() {
-    final random = Random.secure();
-    return (100000 + random.nextInt(900000)).toString();
-  }
 
   String get formattedDate {
     if (selectedDate == null) return "";
@@ -47,7 +36,6 @@ class _RegisteScreenState extends ConsumerState<RegisteScreen> {
     if (selectedDate == null) return false;
     final now = DateTime.now();
     int age = now.year - selectedDate!.year;
-
     if (now.month < selectedDate!.month ||
         (now.month == selectedDate!.month && now.day < selectedDate!.day)) {
       age--;
@@ -73,41 +61,16 @@ class _RegisteScreenState extends ConsumerState<RegisteScreen> {
     );
 
     if (date != null) {
-      final age = DateTime.now().year - date.year;
+      final now = DateTime.now();
+      int age = now.year - date.year;
+      if (now.month < date.month ||
+          (now.month == date.month && now.day < date.day)) {
+        age--;
+      }
       setState(() {
         errorText = age < 13 ? "Please enter a valid date of birth" : null;
         selectedDate = date;
       });
-    }
-  }
-
-  Future<void> createAccountAfterVerification() async {
-    setState(() => isLoading = true);
-    final loader = AppLoader.show(context, message: "Creating your account...");
-
-    try {
-      await ref
-          .read(authControllerProvider)
-          .signUpWithEmail(
-            context: context,
-            email: emailController.text.trim(),
-            password: passwordController.text.trim(),
-          );
-
-      if (selectedDate != null) {
-        await ref
-            .read(authControllerProvider)
-            .updateBirthday(context: context, dob: selectedDate!);
-      }
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const DisplayName()),
-      );
-    } catch (e) {
-      InfoPopup.show(context, "Failed to create account. Please try again.");
-    } finally {
-      loader.remove();
-      setState(() => isLoading = false);
     }
   }
 
@@ -119,52 +82,56 @@ class _RegisteScreenState extends ConsumerState<RegisteScreen> {
       InfoPopup.show(context, "Fill up your Details");
       return;
     }
-
     if (selectedDate == null) {
       InfoPopup.show(context, "Please select your Date of Birth");
       return;
     }
-
     if (!isDobValid) {
       InfoPopup.show(context, "You must be 13 years or older to sign up.");
       return;
     }
 
+    setState(() => isLoading = true);
     try {
-      final generatedOtp = generate6DigiCode();
-
-      print("Generated OTP: $generatedOtp");
-
-      // final functions = FirebaseFunctions.instanceFor(region: 'us-central1');
-
-      // await functions.httpsCallable('sendEmailOtp').call({
-      // "email": email,
-      //"otp": generatedOtp,
-      //});
-
-      showEmailVerificationDialog(generatedOtp);
-    } catch (e) {
-      InfoPopup.show(
-        context,
-        "Failed to send verification email. Please try again.",
+      // Create Firebase account
+      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
       );
+
+      if (!mounted) return;
+
+      // Show email verification dialog.
+      // Dialog returns true when user has verified their email.
+      final verified = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => EmailVerificationDialog(email: email),
+      );
+
+      if (!mounted) return;
+
+      if (verified == true) {
+        // ✅ Email verified → go to DisplayName screen
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const DisplayName()),
+        );
+      }
+      // If dialog was dismissed without verifying, user stays on RegisterScreen
+    } on FirebaseAuthException catch (e) {
+      if (mounted) InfoPopup.show(context, e.message ?? "Registration failed");
+    } catch (_) {
+      if (mounted) InfoPopup.show(context, "Registration failed");
+    } finally {
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
-  void showEmailVerificationDialog(String otp) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return EmailVerificationDialog(
-          email: emailController.text.trim(),
-          generatedOtp: otp,
-          onVerified: () async {
-            await createAccountAfterVerification();
-          },
-        );
-      },
-    );
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
   }
 
   @override
@@ -189,7 +156,7 @@ class _RegisteScreenState extends ConsumerState<RegisteScreen> {
                 SizedBox(
                   height: MediaQuery.of(context).size.height * 0.111,
                   child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
@@ -232,8 +199,8 @@ class _RegisteScreenState extends ConsumerState<RegisteScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          SizedBox(height: 20),
-                          Text(
+                          const SizedBox(height: 20),
+                          const Text(
                             "Email",
                             style: TextStyle(color: Colors.black, fontSize: 15),
                           ),
@@ -244,8 +211,8 @@ class _RegisteScreenState extends ConsumerState<RegisteScreen> {
                           ),
                           const SizedBox(height: 12),
                           Password(controller: passwordController),
-                          SizedBox(height: 8),
-                          Text(
+                          const SizedBox(height: 8),
+                          const Text(
                             "Date of Birth",
                             style: TextStyle(color: Colors.black, fontSize: 14),
                           ),
@@ -319,14 +286,23 @@ class _RegisteScreenState extends ConsumerState<RegisteScreen> {
                                   backgroundColor: Colors.transparent,
                                   shadowColor: Colors.transparent,
                                 ),
-                                child: const Text(
-                                  "Sign Up",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: whiteColor,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                                child: isLoading
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: whiteColor,
+                                        ),
+                                      )
+                                    : const Text(
+                                        "Sign Up",
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: whiteColor,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                               ),
                             ),
                           ),

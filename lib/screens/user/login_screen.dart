@@ -173,7 +173,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ),
             ),
-            // ...existing code...
             const SizedBox(height: 5),
             SizedBox(
               width: double.infinity,
