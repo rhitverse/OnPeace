@@ -674,6 +674,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                                       fileName: fileName,
                                       fileSize: fileSize,
                                       duration: duration,
+                                      senderName: senderName,
                                     ),
                                   ),
                                 ],

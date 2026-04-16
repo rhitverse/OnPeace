@@ -103,6 +103,11 @@ class ChatRepository {
               'fileName': data['fileName'],
               'fileSize': data['fileSize'],
               'duration': data['duration'],
+              'replyToMessageId': data['replyToMessageId'],
+              'replyToText': data['replyToText'],
+              'replyToSenderName': data['replyToSenderName'],
+              'replyToMediaUrl': data['replyToMediaUrl'],
+              'replyToMediaType': data['replyToMediaType'],
             });
           }
           return messages;
@@ -116,6 +121,11 @@ class ChatRepository {
     required String receiverId,
     String receiverDispalyName = '',
     String receiverProfilePic = '',
+    String? replyToMessageId,
+    String? replyToText,
+    String? replyToMediaUrl,
+    String? replyToMediaType,
+    String? replyToSenderName,
   }) async {
     try {
       await _createChatIfNotExists(chatId, senderId, receiverId);
@@ -144,18 +154,25 @@ class ChatRepository {
         );
       }
 
+      final messageData = {
+        'senderId': senderId,
+        'receiverId': receiverId,
+        'encryptedText': encryptedForReceiver,
+        'encryptedSenderCopy': encryptedForSender,
+        'isRead': false,
+        'time': FieldValue.serverTimestamp(),
+        if (replyToMessageId != null) 'replyToMessageId': replyToMessageId,
+        if (replyToText != null) 'replyToText': replyToText,
+        if (replyToMediaUrl != null) 'replyToMediaUrl': replyToMediaUrl,
+        if (replyToMediaType != null) 'replyToMediaType': replyToMediaType,
+        if (replyToSenderName != null) 'replyToSenderName': replyToSenderName,
+      };
+
       await _firestore
           .collection('Chats')
           .doc(chatId)
           .collection('messages')
-          .add({
-            'senderId': senderId,
-            'receiverId': receiverId,
-            'encryptedText': encryptedForReceiver,
-            'encryptedSenderCopy': encryptedForSender,
-            'isRead': false,
-            'time': FieldValue.serverTimestamp(),
-          });
+          .add(messageData);
 
       await _updateLastMessage(chatId, senderId, receiverId, 'Message');
     } catch (e) {

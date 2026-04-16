@@ -37,6 +37,8 @@ class MobileChatScreen extends ConsumerStatefulWidget {
 }
 
 class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
+  final Map<String, GlobalKey> _messageKeys = {};
+  String? _highlightedMessageId;
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool showEmoji = false;
@@ -44,7 +46,8 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
   String receiverDisplayName = '';
   String receiverProfilePic = '';
 
-  // Reply management
+  List<Map<String, dynamic>> _allMessages = [];
+
   String? replyingToMessageId;
   String? replyingToText;
   String? replyingToMediaUrl;
@@ -66,6 +69,56 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
       replyingToSenderName = senderName;
     });
     focusNode.requestFocus();
+  }
+
+  void _doScrollAndHighlight(String messageId, GlobalKey key) {
+    if (key.currentContext == null) return;
+
+    Scrollable.ensureVisible(
+      key.currentContext!,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeInOut,
+      alignment: 0.3,
+    );
+
+    setState(() => _highlightedMessageId = messageId);
+
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _highlightedMessageId = null);
+    });
+  }
+
+  void _scrollToMessage(String? messageId) {
+    if (messageId == null) return;
+
+    final key = _messageKeys[messageId];
+    if (key?.currentContext != null) {
+      _doScrollAndHighlight(messageId, key!);
+      return;
+    }
+
+    final index = _allMessages.indexWhere((m) => m['id'] == messageId);
+    if (index == -1) return;
+
+    // Because ListView is reverse: true, offset is from the end
+    const double estimatedItemHeight = 72.0;
+    final totalCount = _allMessages.length;
+    final int reverseIndex = totalCount - 1 - index;
+    final double estimatedOffset = reverseIndex * estimatedItemHeight;
+
+    final double safeOffset = _scrollController.hasClients
+        ? estimatedOffset.clamp(0.0, _scrollController.position.maxScrollExtent)
+        : estimatedOffset;
+
+    _scrollController.jumpTo(safeOffset);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final k = _messageKeys[messageId];
+      if (k?.currentContext != null) {
+        _doScrollAndHighlight(messageId, k!);
+      }
+    });
   }
 
   void _clearReply() {
@@ -133,10 +186,16 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
     if (_messageController.text.trim().isEmpty) return;
 
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
-
     if (currentUserId == null) return;
+
     final messageText = _messageController.text.trim();
     final tempId = DateTime.now().millisecondsSinceEpoch.toString();
+
+    final replyId = replyingToMessageId;
+    final replyText = replyingToText;
+    final replyMedia = replyingToMediaUrl;
+    final replyMediaType = replyingToMediaType;
+    final replySender = replyingToSenderName;
 
     ref
         .read(pendingMessagesProvider.notifier)
@@ -151,6 +210,7 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
         );
 
     _messageController.clear();
+    _clearReply();
 
     try {
       await ref
@@ -160,6 +220,11 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
             senderId: currentUserId,
             text: messageText,
             receiverId: widget.receiverUid,
+            replyToMessageId: replyId,
+            replyToText: replyText,
+            replyToMediaUrl: replyMedia,
+            replyToMediaType: replyMediaType,
+            replyToSenderName: replySender,
           );
 
       if (mounted) {
@@ -289,7 +354,7 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
               color: whiteColor,
             ),
           ),
-          SizedBox(width: 16),
+          const SizedBox(width: 16),
           GestureDetector(
             onTap: _startVoiceCall,
             child: SvgPicture.asset(
@@ -301,7 +366,11 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
           ),
           IconButton(
             onPressed: () {},
-            icon: Icon(Icons.more_vert_outlined, size: 26, color: whiteColor),
+            icon: const Icon(
+              Icons.more_vert_outlined,
+              size: 26,
+              color: whiteColor,
+            ),
           ),
         ],
       ),
@@ -319,7 +388,6 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                 final pendingMessages = ref.watch(pendingMessagesProvider);
 
                 final allMessages = <Map<String, dynamic>>[];
-
                 allMessages.addAll(firebaseMessages);
 
                 for (final pm in pendingMessages) {
@@ -333,11 +401,9 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
 
                       final senderMatch = fbMsg['senderId'] == pm.senderId;
                       final mediaTypeMatch = fbMsg['mediaType'] == pm.mediaType;
-
                       final fileNameMatch =
                           pm.fileName != null &&
                           fbMsg['fileName'] == pm.fileName;
-
                       final timeMatch =
                           fbTime != null &&
                           pm.sentTime.difference(fbTime).inSeconds.abs() < 10;
@@ -396,6 +462,10 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                   return const ChatLoader();
                 }
 
+                // ✅ FIX: Latest messages list save karo — scroll ke liye
+                // setState nahi chahiye kyunki ye sirf _scrollToMessage use karta hai
+                _allMessages = allMessages;
+
                 return ListView.builder(
                   controller: _scrollController,
                   reverse: true,
@@ -422,6 +492,17 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
 
                     final messageId = messageData['id'] ?? '';
                     final isLoading = uploadingMessages.contains(messageId);
+
+                    final replyToText = messageData['replyToText'] as String?;
+                    final replyToSenderName =
+                        messageData['replyToSenderName'] as String?;
+                    final replyToMediaUrl =
+                        messageData['replyToMediaUrl'] as String?;
+                    final replyToMediaType =
+                        messageData['replyToMediaType'] as String?;
+
+                    // ✅ Key ko reuse karo — har build pe naya mat banao
+                    _messageKeys.putIfAbsent(messageId, () => GlobalKey());
 
                     String timeString = '';
                     DateTime? msgDateTime;
@@ -507,6 +588,7 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                                   );
                                 },
                                 child: SenderMessage(
+                                  key: _messageKeys[messageId],
                                   text: text,
                                   time: timeString,
                                   showTail: showTail,
@@ -520,6 +602,15 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                                   isLoading:
                                       isLoading ||
                                       (isPending && pendingStatus == 'sending'),
+                                  replyToText: replyToText,
+                                  replyToSenderName: replyToSenderName,
+                                  replyToMediaUrl: replyToMediaUrl,
+                                  replyToMediaType: replyToMediaType,
+                                  isHighlighted:
+                                      _highlightedMessageId == messageId,
+                                  onReplyTap: () => _scrollToMessage(
+                                    messageData['replyToMessageId'],
+                                  ),
                                 ),
                               )
                             : GestureDetector(
@@ -554,6 +645,7 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                                   );
                                 },
                                 child: ReceiverMessage(
+                                  key: _messageKeys[messageId],
                                   text: text,
                                   time: timeString,
                                   showTail: showTail,
@@ -565,6 +657,16 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                                   fileSize: fileSize,
                                   duration: duration,
                                   isLoading: isLoading,
+                                  replyToText: replyToText,
+                                  replyToSenderName: replyToSenderName,
+                                  replyToMediaUrl: replyToMediaUrl,
+                                  replyToMediaType: replyToMediaType,
+                                  senderName: widget.receiverDisplayName,
+                                  isHighlighted:
+                                      _highlightedMessageId == messageId,
+                                  onReplyTap: () => _scrollToMessage(
+                                    messageData['replyToMessageId'],
+                                  ),
                                 ),
                               ),
                       ],

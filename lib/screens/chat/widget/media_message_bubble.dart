@@ -26,6 +26,10 @@ class MediaMessageBubble extends StatefulWidget {
   final bool isUploading;
   final String? localFilePath;
   final VoidCallback? onCancelUpload;
+  final String? replyToText;
+  final String? replyToSenderName;
+  final String? replyToMediaUrl;
+  final String? replyToMediaType;
 
   const MediaMessageBubble({
     super.key,
@@ -43,6 +47,10 @@ class MediaMessageBubble extends StatefulWidget {
     this.isUploading = false,
     this.localFilePath,
     this.onCancelUpload,
+    this.replyToText,
+    this.replyToSenderName,
+    this.replyToMediaUrl,
+    this.replyToMediaType,
   });
 
   @override

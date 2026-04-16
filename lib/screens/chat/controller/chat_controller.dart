@@ -25,6 +25,11 @@ class ChatController {
     required String receiverId,
     String receiverDisplayName = '',
     String receiverProfilePic = '',
+    String? replyToMessageId,
+    String? replyToText,
+    String? replyToMediaUrl,
+    String? replyToMediaType,
+    String? replyToSenderName,
   }) async {
     try {
       await _chatRepository.sendMessage(
@@ -34,6 +39,11 @@ class ChatController {
         receiverId: receiverId,
         receiverDispalyName: receiverDisplayName,
         receiverProfilePic: receiverProfilePic,
+        replyToMessageId: replyToMessageId,
+        replyToText: replyToText,
+        replyToMediaUrl: replyToMediaUrl,
+        replyToMediaType: replyToMediaType,
+        replyToSenderName: replyToSenderName,
       );
     } catch (e) {
       return;
