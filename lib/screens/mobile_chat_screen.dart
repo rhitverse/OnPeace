@@ -46,6 +46,7 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
   String receiverDisplayName = '';
   String receiverProfilePic = '';
 
+  // FIX: _allMessages is updated safely via post-frame callback, never in build
   List<Map<String, dynamic>> _allMessages = [];
 
   String? replyingToMessageId;
@@ -100,7 +101,6 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
     final index = _allMessages.indexWhere((m) => m['id'] == messageId);
     if (index == -1) return;
 
-    // Because ListView is reverse: true, offset is from the end
     const double estimatedItemHeight = 72.0;
     final totalCount = _allMessages.length;
     final int reverseIndex = totalCount - 1 - index;
@@ -298,10 +298,78 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
     );
   }
 
+  List<Map<String, dynamic>> _buildMessageList(
+    List<Map<String, dynamic>> firebaseMessages,
+    List<PendingMessage> pendingMessages,
+  ) {
+    final allMessages = <Map<String, dynamic>>[];
+    allMessages.addAll(firebaseMessages);
+
+    for (final pm in pendingMessages) {
+      final alreadyExists = firebaseMessages.any((fbMsg) {
+        final fbTime = DateTime.tryParse(fbMsg['time'] as String? ?? '');
+        final sameSender = fbMsg['senderId'] == pm.senderId;
+
+        if (pm.fileName != null &&
+            pm.fileName!.isNotEmpty &&
+            fbMsg['fileName'] == pm.fileName) {
+          return sameSender;
+        }
+
+        if (pm.localFilePath != null &&
+            fbMsg['localFilePath'] == pm.localFilePath) {
+          return true;
+        }
+
+        final sameText = pm.text.isNotEmpty && fbMsg['text'] == pm.text;
+        final withinWindow =
+            fbTime != null &&
+            pm.sentTime.difference(fbTime).inSeconds.abs() < 10;
+
+        return sameSender && sameText && withinWindow;
+      });
+
+      if (!alreadyExists) {
+        allMessages.add({
+          'id': pm.tempId,
+          'text': pm.text,
+          'senderId': pm.senderId,
+          'time': pm.sentTime.toIso8601String(),
+          'mediaUrl': pm.mediaUrl ?? pm.localFilePath,
+          'mediaType': pm.mediaType,
+          'fileName': pm.fileName,
+          'fileSize': pm.fileSize,
+          'duration': pm.duration,
+          'isPending': true,
+          'pendingStatus': pm.status,
+          'localFilePath': pm.localFilePath,
+        });
+      }
+    }
+
+    allMessages.sort((a, b) {
+      try {
+        final timeA = DateTime.parse(a['time'] ?? '');
+        final timeB = DateTime.parse(b['time'] ?? '');
+        final cmp = timeB.compareTo(timeA);
+        if (cmp != 0) return cmp;
+        final aPending = (a['isPending'] as bool?) ?? false;
+        final bPending = (b['isPending'] as bool?) ?? false;
+        if (aPending != bPending) return aPending ? -1 : 1;
+        return 0;
+      } catch (_) {
+        return 0;
+      }
+    });
+
+    return allMessages;
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
     final uploadingMessages = ref.watch(uploadingMessagesProvider);
+
     return Scaffold(
       backgroundColor: backgroundColor,
       resizeToAvoidBottomInset: !showEmoji,
@@ -387,88 +455,28 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                         .cast<Map<String, dynamic>>();
                 final pendingMessages = ref.watch(pendingMessagesProvider);
 
-                final allMessages = <Map<String, dynamic>>[];
-                allMessages.addAll(firebaseMessages);
-
-                for (final pm in pendingMessages) {
-                  bool isDuplicate = false;
-
-                  try {
-                    for (final fbMsg in firebaseMessages) {
-                      final fbTime = DateTime.tryParse(
-                        fbMsg['time'] as String? ?? '',
-                      );
-
-                      final senderMatch = fbMsg['senderId'] == pm.senderId;
-                      final mediaTypeMatch = fbMsg['mediaType'] == pm.mediaType;
-                      final fileNameMatch =
-                          pm.fileName != null &&
-                          fbMsg['fileName'] == pm.fileName;
-                      final timeMatch =
-                          fbTime != null &&
-                          pm.sentTime.difference(fbTime).inSeconds.abs() < 10;
-
-                      if (senderMatch &&
-                          mediaTypeMatch &&
-                          (fileNameMatch || timeMatch)) {
-                        isDuplicate = true;
-                        break;
-                      }
-                    }
-                  } catch (_) {}
-
-                  if (!isDuplicate && pm.localFilePath != null) {
-                    for (final fbMsg in firebaseMessages) {
-                      if (fbMsg['localFilePath'] == pm.localFilePath) {
-                        isDuplicate = true;
-                        break;
-                      }
-                    }
-                  }
-
-                  if (!isDuplicate) {
-                    allMessages.add({
-                      'id': pm.tempId,
-                      'text': pm.text,
-                      'senderId': pm.senderId,
-                      'time': pm.sentTime.toIso8601String(),
-                      'mediaUrl': pm.mediaUrl ?? pm.localFilePath,
-                      'mediaType': pm.mediaType,
-                      'fileName': pm.fileName,
-                      'fileSize': pm.fileSize,
-                      'duration': pm.duration,
-                      'isPending': true,
-                      'pendingStatus': pm.status,
-                      'localFilePath': pm.localFilePath,
-                    });
-                  }
-                }
-
-                allMessages.sort((a, b) {
-                  try {
-                    final timeA = DateTime.parse(a['time'] ?? '');
-                    final timeB = DateTime.parse(b['time'] ?? '');
-                    return timeB.compareTo(timeA);
-                  } catch (_) {
-                    return 0;
-                  }
-                });
-
                 if (!snapshot.hasData && pendingMessages.isEmpty) {
                   return const ChatLoader();
                 }
+
+                final allMessages = _buildMessageList(
+                  firebaseMessages,
+                  pendingMessages,
+                );
 
                 if (allMessages.isEmpty) {
                   return const ChatLoader();
                 }
 
-                // ✅ FIX: Latest messages list save karo — scroll ke liye
-                // setState nahi chahiye kyunki ye sirf _scrollToMessage use karta hai
-                _allMessages = allMessages;
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) _allMessages = allMessages;
+                });
 
                 return ListView.builder(
+                  key: const PageStorageKey('chat_list'),
                   controller: _scrollController,
                   reverse: true,
+                  cacheExtent: 1500,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 10,
@@ -501,7 +509,6 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                     final replyToMediaType =
                         messageData['replyToMediaType'] as String?;
 
-                    // ✅ Key ko reuse karo — har build pe naya mat banao
                     _messageKeys.putIfAbsent(messageId, () => GlobalKey());
 
                     String timeString = '';
@@ -516,8 +523,8 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
                     bool showTail = true;
                     bool isGrouped = false;
                     bool showTime = true;
-
                     bool showDataChip = false;
+
                     if (index == allMessages.length - 1) {
                       showDataChip = true;
                     } else {
@@ -677,84 +684,87 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
             ),
           ),
           if (replyingToMessageId != null)
-            Row(
-              children: [
-                Icon(Icons.reply, color: uiColor, size: 20),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Replying to ${replyingToSenderName ?? ''}',
-                        style: const TextStyle(
-                          color: whiteColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(
+                children: [
+                  Icon(Icons.reply, color: uiColor, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Replying to ${replyingToSenderName ?? ''}',
+                          style: const TextStyle(
+                            color: whiteColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 6),
-                      if (replyingToMediaType != null &&
-                          replyingToMediaType!.isNotEmpty)
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: Container(
-                            constraints: const BoxConstraints(
-                              maxHeight: 50,
-                              maxWidth: 50,
-                            ),
-                            child: replyingToMediaType == 'image'
-                                ? Image.network(
-                                    replyingToMediaUrl ?? '',
-                                    fit: BoxFit.cover,
-                                    errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            Container(
-                                              color: Colors.grey[700],
-                                              child: const Center(
-                                                child: Icon(
-                                                  Icons.image,
-                                                  color: whiteColor,
+                        const SizedBox(height: 6),
+                        if (replyingToMediaType != null &&
+                            replyingToMediaType!.isNotEmpty)
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: Container(
+                              constraints: const BoxConstraints(
+                                maxHeight: 50,
+                                maxWidth: 50,
+                              ),
+                              child: replyingToMediaType == 'image'
+                                  ? Image.network(
+                                      replyingToMediaUrl ?? '',
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              Container(
+                                                color: Colors.grey[700],
+                                                child: const Center(
+                                                  child: Icon(
+                                                    Icons.image,
+                                                    color: whiteColor,
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                  )
-                                : Container(
-                                    color: Colors.grey[700],
-                                    child: Center(
-                                      child: Icon(
-                                        replyingToMediaType == 'video'
-                                            ? Icons.videocam
-                                            : Icons.attachment,
-                                        color: whiteColor,
+                                    )
+                                  : Container(
+                                      color: Colors.grey[700],
+                                      child: Center(
+                                        child: Icon(
+                                          replyingToMediaType == 'video'
+                                              ? Icons.videocam
+                                              : Icons.attachment,
+                                          color: whiteColor,
+                                        ),
                                       ),
                                     ),
-                                  ),
+                            ),
+                          )
+                        else
+                          Text(
+                            replyingToText ?? '',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: whiteColor.withOpacity(0.7),
+                              fontSize: 13,
+                            ),
                           ),
-                        )
-                      else
-                        Text(
-                          replyingToText ?? '',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: whiteColor.withOpacity(0.7),
-                            fontSize: 13,
-                          ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                GestureDetector(
-                  onTap: _clearReply,
-                  child: Icon(
-                    Icons.close,
-                    color: whiteColor.withOpacity(0.5),
-                    size: 20,
+                  GestureDetector(
+                    onTap: _clearReply,
+                    child: Icon(
+                      Icons.close,
+                      color: whiteColor.withOpacity(0.5),
+                      size: 20,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           BottomChatField(
             controller: _messageController,

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:on_peace/colors.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:on_peace/screens/chat/widget/profile/view_profile_screen.dart';
+import 'package:on_peace/screens/chat/widget/profile/view_profile_unknown.dart';
 
 class ScanQrTab extends StatefulWidget {
   const ScanQrTab({super.key});
@@ -11,25 +15,112 @@ class ScanQrTab extends StatefulWidget {
 
 class _ScanQrTabState extends State<ScanQrTab> {
   bool isScanned = false;
+  Future<DocumentSnapshot?> _resolveUser(String scannedValue) async {
+    final byUid = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(scannedValue)
+        .get();
+
+    if (byUid.exists) return byUid;
+
+    final query = await FirebaseFirestore.instance
+        .collection('users')
+        .where('qrData', isEqualTo: scannedValue)
+        .limit(1)
+        .get();
+
+    if (query.docs.isNotEmpty) return query.docs.first;
+
+    return null;
+  }
+
+  Future<void> _handleScan(String code) async {
+    if (isScanned) return;
+    setState(() => isScanned = true);
+
+    final currentUid = FirebaseAuth.instance.currentUser!.uid;
+
+    try {
+      final userDoc = await _resolveUser(code);
+
+      if (userDoc == null) {
+        _showSnack("Invalid QR code — user not found.");
+        setState(() => isScanned = false);
+        return;
+      }
+
+      final resolvedUid = userDoc.id;
+      final userData = userDoc.data() as Map<String, dynamic>;
+
+      final profilePic = userData['profilePic'] ?? '';
+      final displayName = userData['displayname'] ?? '';
+
+      if (resolvedUid == currentUid) {
+        _showSnack("That's your own QR code!");
+        setState(() => isScanned = false);
+        return;
+      }
+
+      final friendDoc = await FirebaseFirestore.instance
+          .collection('Friends')
+          .doc('${currentUid}_$resolvedUid')
+          .get();
+
+      final friendDoc2 = await FirebaseFirestore.instance
+          .collection('Friends')
+          .doc('${resolvedUid}_$currentUid')
+          .get();
+
+      final isFriend = friendDoc.exists || friendDoc2.exists;
+
+      if (!mounted) return;
+
+      final route = isFriend
+          ? MaterialPageRoute(
+              builder: (_) => ViewProfileScreen(
+                receiverUid: resolvedUid,
+                receiverDisplayName: displayName,
+                receiverProfilePic: profilePic,
+              ),
+            )
+          : MaterialPageRoute(
+              builder: (_) => ViewProfileUnknown(
+                receiverUid: resolvedUid,
+                receiverDisplayName: displayName,
+                receiverProfilePic: profilePic,
+              ),
+            );
+
+      Navigator.of(context).pushReplacement(route);
+    } catch (e) {
+      _showSnack("Something went wrong. Please try again.");
+      debugPrint("QR scan error: $e");
+      if (mounted) setState(() => isScanned = false);
+    }
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
 
   @override
   Widget build(BuildContext context) {
-    final double boxWidth = 285;
-    final double boxHeight = 270;
+    const double boxWidth = 285;
+    const double boxHeight = 270;
     const double verticalOffset = -102;
+
     return Stack(
       children: [
         MobileScanner(
           onDetect: (capture) {
-            if (!isScanned) {
-              final code = capture.barcodes.first.rawValue;
-              if (code != null) {
-                setState(() => isScanned = true);
-                debugPrint("Scanned Code: $code");
-              }
-            }
+            final raw = capture.barcodes.firstOrNull?.rawValue;
+            if (raw != null) _handleScan(raw);
           },
         ),
+
         CustomPaint(
           size: Size(
             MediaQuery.of(context).size.width,
@@ -42,30 +133,57 @@ class _ScanQrTabState extends State<ScanQrTab> {
             verticalOffset: verticalOffset,
           ),
         ),
+
         Align(
           alignment: const Alignment(0, -0.3),
-          child: Container(
+          child: SizedBox(
             width: boxWidth,
             height: boxHeight,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.transparent),
-            ),
             child: Stack(
               children: [
-                scanCorner(true, true),
-                scanCorner(true, false),
-                scanCorner(false, true),
-                scanCorner(false, false),
+                _scanCorner(top: true, left: true),
+                _scanCorner(top: true, left: false),
+                _scanCorner(top: false, left: true),
+                _scanCorner(top: false, left: false),
               ],
             ),
           ),
         ),
+
+        if (isScanned)
+          Align(
+            alignment: const Alignment(0, -0.05),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: whiteColor,
+                    ),
+                  ),
+                  SizedBox(width: 10),
+                  Text(
+                    "Looking up user…",
+                    style: TextStyle(color: whiteColor, fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+          ),
       ],
     );
   }
 
-  Widget scanCorner(bool top, bool left) {
+  Widget _scanCorner({required bool top, required bool left}) {
     return Positioned(
       top: top ? 0 : null,
       bottom: top ? null : 0,
@@ -109,7 +227,7 @@ class ScannerOverlayPainter extends CustomPainter {
   final double borderRadius;
   final double verticalOffset;
 
-  ScannerOverlayPainter({
+  const ScannerOverlayPainter({
     required this.width,
     required this.height,
     required this.verticalOffset,
@@ -132,12 +250,13 @@ class ScannerOverlayPainter extends CustomPainter {
       Radius.circular(borderRadius),
     );
 
-    overlayPath.addRRect(boxRect);
-    overlayPath.fillType = PathFillType.evenOdd;
+    overlayPath
+      ..addRRect(boxRect)
+      ..fillType = PathFillType.evenOdd;
 
     canvas.drawPath(overlayPath, paint);
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

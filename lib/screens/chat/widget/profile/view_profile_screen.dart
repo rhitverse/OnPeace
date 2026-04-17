@@ -4,6 +4,9 @@ import 'package:flutter_svg/svg.dart';
 import 'package:intl/intl.dart';
 import 'package:on_peace/colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:on_peace/screens/friends/controller/friend_controller.dart';
+import 'package:on_peace/screens/mobile_chat_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 final receiverProfileProvider =
     FutureProvider.family<Map<String, dynamic>?, String>((ref, uid) async {
@@ -23,6 +26,57 @@ String _formatDob(String raw, bool showYear) {
   } catch (_) {
     return raw;
   }
+}
+
+void _showMoreOptions(BuildContext context, WidgetRef ref, String receiverUid) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: backgroundColor,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (context) {
+      return SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey,
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            ListTile(
+              leading: const Icon(Icons.person_remove, color: Colors.red),
+              title: const Text(
+                "Remove Friend",
+                style: TextStyle(color: Colors.red),
+              ),
+              onTap: () async {
+                Navigator.pop(context);
+
+                final currentUid = FirebaseAuth.instance.currentUser!.uid;
+
+                await ref
+                    .read(friendControllerProvider.notifier)
+                    .removeFriend(
+                      currentUid: currentUid,
+                      friendUid: receiverUid,
+                    );
+              },
+            ),
+
+            const SizedBox(height: 10),
+          ],
+        ),
+      );
+    },
+  );
 }
 
 class ViewProfileScreen extends ConsumerWidget {
@@ -51,12 +105,17 @@ class ViewProfileScreen extends ConsumerWidget {
             automaticallyImplyLeading: false,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_ios, color: whiteColor),
-              onPressed: () => Navigator.pop(context),
+              onPressed: () {
+                Navigator.pop(context);
+              },
             ),
+
             actions: [
               IconButton(
                 icon: const Icon(Icons.more_vert, color: whiteColor),
-                onPressed: () {},
+                onPressed: () {
+                  _showMoreOptions(context, ref, receiverUid);
+                },
               ),
             ],
             flexibleSpace: FlexibleSpaceBar(
@@ -164,7 +223,25 @@ class ViewProfileScreen extends ConsumerWidget {
                               color: Colors.transparent,
                               child: InkWell(
                                 borderRadius: BorderRadius.circular(30),
-                                onTap: () => Navigator.pop(context),
+                                onTap: () {
+                                  final currentUid =
+                                      FirebaseAuth.instance.currentUser!.uid;
+                                  final uids = [currentUid, receiverUid]
+                                    ..sort();
+                                  final chatId = "${uids[0]}_${uids[1]}";
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => MobileChatScreen(
+                                        chatId: chatId,
+                                        receiverUid: receiverUid,
+                                        receiverDisplayName:
+                                            receiverDisplayName,
+                                        receiverProfilePic: receiverProfilePic,
+                                      ),
+                                    ),
+                                  );
+                                },
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
