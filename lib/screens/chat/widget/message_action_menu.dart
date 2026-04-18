@@ -1,7 +1,12 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:on_peace/colors.dart';
 import 'package:on_peace/screens/chat/forward/forward_messages_screen.dart';
+import 'package:on_peace/widgets/helpful_widgets/custom_messenger.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:vision_gallery_saver/vision_gallery_saver.dart';
 
 class MessageActionMenu {
   static void show({
@@ -15,7 +20,6 @@ class MessageActionMenu {
     late OverlayEntry dismissEntry;
     bool isRemoved = false;
 
-    // Get current user ID to check if this is sender's own message
     final currentUserId = messageData['currentUserId'] as String? ?? '';
     final senderId = messageData['senderId'] as String? ?? '';
     final isOwnMessage = senderId == currentUserId;
@@ -61,7 +65,6 @@ class MessageActionMenu {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Timestamp
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Text(
@@ -75,7 +78,6 @@ class MessageActionMenu {
 
                   Divider(color: whiteColor.withOpacity(0.07), height: 1),
 
-                  // Reply
                   GestureDetector(
                     onTap: () {
                       removeOverlay();
@@ -113,7 +115,6 @@ class MessageActionMenu {
                     ),
                   ),
 
-                  // Copy
                   if ((messageData['text'] as String?)?.isNotEmpty ?? false)
                     GestureDetector(
                       onTap: () {
@@ -166,7 +167,7 @@ class MessageActionMenu {
                       child: Row(
                         children: [
                           SvgPicture.asset(
-                            'assets/svg/forward.svg',
+                            'assets/svg/message.svg',
                             width: 18,
                             height: 18,
                             colorFilter: const ColorFilter.mode(
@@ -227,6 +228,13 @@ class MessageActionMenu {
                     GestureDetector(
                       onTap: () {
                         removeOverlay();
+
+                        final mediaUrl = messageData['mediaUrl'] as String?;
+                        final mediaType = messageData['mediaType'] as String?;
+
+                        if (mediaUrl != null && mediaUrl.isNotEmpty) {
+                          _downloadMedia(context, mediaUrl, mediaType);
+                        }
                       },
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
@@ -258,7 +266,6 @@ class MessageActionMenu {
                       ),
                     ),
 
-                  // Delete
                   GestureDetector(
                     onTap: () {
                       removeOverlay();
@@ -307,7 +314,6 @@ class MessageActionMenu {
       ),
     );
 
-    // Create dismiss overlay layer first (will be behind the menu)
     dismissEntry = OverlayEntry(
       builder: (context) => Positioned(
         top: 0,
@@ -323,7 +329,6 @@ class MessageActionMenu {
       ),
     );
 
-    // Insert dismiss layer first so menu is on top
     overlay.insert(dismissEntry);
     overlay.insert(overlayEntry);
   }
@@ -352,7 +357,6 @@ class MessageActionMenu {
       );
       final difference = today.difference(messageDate).inDays;
 
-      // Format time in 12-hour format with AM/PM
       final hour = messageTime.hour;
       final minute = messageTime.minute.toString().padLeft(2, '0');
       final hour12 = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
@@ -360,13 +364,10 @@ class MessageActionMenu {
       final timeStr = '$hour12:$minute $amPm';
 
       if (difference == 0) {
-        // Today
         return timeStr;
       } else if (difference == 1) {
-        // Yesterday
         return 'Yesterday $timeStr';
       } else if (difference < 7) {
-        // Within the week
         final dayName = [
           'Mon',
           'Tue',
@@ -378,7 +379,6 @@ class MessageActionMenu {
         ][messageTime.weekday - 1];
         return '$dayName $timeStr';
       } else {
-        // Older than a week
         return '${messageTime.day}/${messageTime.month} $timeStr';
       }
     } catch (e) {
@@ -386,13 +386,66 @@ class MessageActionMenu {
     }
   }
 
+  static Future<void> _downloadMedia(
+    BuildContext context,
+    String url,
+    String? mediaType,
+  ) async {
+    try {
+      bool granted = false;
+
+      if (mediaType == 'video') {
+        final status = await Permission.videos.request();
+        granted = status.isGranted;
+      } else {
+        final status = await Permission.photos.request();
+        granted = status.isGranted;
+      }
+
+      if (!granted) {
+        final status = await Permission.storage.request();
+        granted = status.isGranted;
+      }
+
+      if (!granted) {
+        if (context.mounted) {
+          CustomMessenger.show(context, "Storage permission denied");
+        }
+        return;
+      }
+
+      if (context.mounted) {
+        CustomMessenger.show(context, "Downloading...");
+      }
+
+      final dir = await getTemporaryDirectory();
+      final ext = url.split('.').last.split('?').first;
+      final filePath =
+          '${dir.path}/${DateTime.now().millisecondsSinceEpoch}.$ext';
+
+      final dio = Dio();
+      await dio.download(url, filePath);
+
+      if (mediaType == 'image' || mediaType == 'gif' || mediaType == 'video') {
+        await VisionGallerySaver.saveFile(filePath);
+        if (context.mounted) {
+          CustomMessenger.show(context, "Saved to gallery");
+        }
+      } else {
+        if (context.mounted) {
+          CustomMessenger.show(context, "File downloaded");
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        CustomMessenger.show(context, "Download failed");
+      }
+      debugPrint('Download error: $e');
+    }
+  }
+
   static void _copyToClipboard(BuildContext context, String text) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Message copied'),
-        duration: Duration(seconds: 1),
-      ),
-    );
+    CustomMessenger.show(context, "Message copied");
   }
 
   static void _showDeleteConfirmation(

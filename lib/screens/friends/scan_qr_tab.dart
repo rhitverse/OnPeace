@@ -244,7 +244,7 @@ class ScanQrTabState extends State<ScanQrTab> {
                   ),
                   SizedBox(width: 10),
                   Text(
-                    "Looking up user…",
+                    "Looking For user…",
                     style: TextStyle(color: whiteColor, fontSize: 14),
                   ),
                 ],
