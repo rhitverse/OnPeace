@@ -4,8 +4,6 @@ import 'package:on_peace/colors.dart';
 import 'package:on_peace/screens/friends/my_qr_code_tab.dart';
 import 'package:on_peace/screens/friends/scan_qr_tab.dart';
 import 'package:on_peace/screens/friends/qr_bottom_nav.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
 import 'package:photo_manager/photo_manager.dart';
 
 class QrScanner extends StatefulWidget {
@@ -20,6 +18,8 @@ class _QrScannerState extends State<QrScanner>
   late TabController tabController;
   Uint8List? recentImage;
 
+  final GlobalKey<ScanQrTabState> _scanQrKey = GlobalKey<ScanQrTabState>();
+
   @override
   void initState() {
     super.initState();
@@ -32,44 +32,18 @@ class _QrScannerState extends State<QrScanner>
     if (!permission.isAuth) return;
 
     final albums = await PhotoManager.getAssetPathList(type: RequestType.image);
-    if (albums.isEmpty) {
-      debugPrint("No album found");
-      return;
-    }
-    final recentAlbum = albums.first;
+    if (albums.isEmpty) return;
 
-    final assets = await recentAlbum.getAssetListPaged(page: 0, size: 1);
-    if (assets.isEmpty) {
-      debugPrint("No image found");
-      return;
-    }
+    final assets = await albums.first.getAssetListPaged(page: 0, size: 1);
+    if (assets.isEmpty) return;
+
     final thumb = await assets.first.thumbnailDataWithSize(
       const ThumbnailSize(300, 300),
     );
 
-    if (thumb == null || thumb.isEmpty) {
-      debugPrint("Thumbnail Null or EMpty");
+    if (mounted) {
+      setState(() => recentImage = thumb);
     }
-
-    setState(() {
-      recentImage = thumb;
-    });
-  }
-
-  Future<void> scanFromGallery() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile == null) return;
-
-    final inputImage = InputImage.fromFilePath(pickedFile.path);
-    final scanner = BarcodeScanner();
-
-    final barcodes = await scanner.processImage(inputImage);
-
-    for (Barcode barcode in barcodes) {
-      debugPrint("Gallery QR: ${barcode.rawValue}");
-    }
-    scanner.close();
   }
 
   @override
@@ -86,7 +60,10 @@ class _QrScannerState extends State<QrScanner>
         children: [
           TabBarView(
             controller: tabController,
-            children: const [ScanQrTab(), MyQrCodeTab()],
+            children: [
+              ScanQrTab(key: _scanQrKey),
+              const MyQrCodeTab(),
+            ],
           ),
 
           QrBottomNav(controller: tabController),
@@ -96,14 +73,18 @@ class _QrScannerState extends State<QrScanner>
             left: 15,
             child: IconButton(
               onPressed: () => Navigator.pop(context),
-              icon: Icon(Icons.close, color: whiteColor, size: 26),
+              icon: const Icon(Icons.close, color: whiteColor, size: 26),
             ),
           ),
+
           Positioned(
             bottom: 190,
             right: 20,
             child: GestureDetector(
-              onTap: scanFromGallery,
+              onTap: () {
+                tabController.animateTo(0);
+                _scanQrKey.currentState?.pickFromGallery();
+              },
               child: Container(
                 width: 48,
                 height: 48,
@@ -121,7 +102,7 @@ class _QrScannerState extends State<QrScanner>
                           height: 48,
                         ),
                       )
-                    : Icon(Icons.photo, color: whiteColor),
+                    : const Icon(Icons.photo, color: whiteColor),
               ),
             ),
           ),

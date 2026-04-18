@@ -48,7 +48,13 @@ class _MyQrCodeTabState extends State<MyQrCodeTab> {
           doc.data()!['qrData'].toString().isNotEmpty) {
         initialQrData = doc.data()!['qrData'];
       } else {
-        initialQrData = uid;
+        final user = UserModel.fromMap(doc.data()!);
+        initialQrData =
+            "${user.username ?? user.displayname}_${DateTime.now().millisecondsSinceEpoch}";
+
+        await FirebaseFirestore.instance.collection('users').doc(uid).update({
+          'qrData': initialQrData,
+        });
       }
 
       setState(() {
@@ -109,12 +115,12 @@ class _MyQrCodeTabState extends State<MyQrCodeTab> {
     if (mounted) {
       await Share.shareXFiles([
         XFile(file.path),
-      ], text: "https://yourapp.com/user/$qrData");
+      ], text: "https://OnPeace.com/user/$qrData");
     }
   }
 
   void copyLink() {
-    Clipboard.setData(ClipboardData(text: "https://yourapp.com/user/$qrData"));
+    Clipboard.setData(ClipboardData(text: "https://OnPeace.com/user/$qrData"));
   }
 
   @override
