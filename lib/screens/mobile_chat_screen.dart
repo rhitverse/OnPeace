@@ -46,7 +46,6 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
   String receiverDisplayName = '';
   String receiverProfilePic = '';
 
-  // FIX: _allMessages is updated safely via post-frame callback, never in build
   List<Map<String, dynamic>> _allMessages = [];
 
   String? replyingToMessageId;
