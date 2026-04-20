@@ -1,7 +1,7 @@
 samples, guidance on mobile development, and a full API reference.
 
 
-![OnPeace Banner](assets/sample.png)
+![OnPeace Banner](assets/applogo.png)
 
 # OnPeace Social Platform
 
@@ -15,7 +15,7 @@ OnPeace is a real-time social messaging platform designed for seamless, low-late
 
 ---
 
-![App Screenshot](appImage.jpg)
+![App Screenshot](assets/appImage.jpg)
 
 ---
 
