@@ -75,7 +75,7 @@ dependencies:
   go_router: ^17.1.0
   shared_preferences: ^2.5.4
   image_cropper: ^11.0.0
-  zego_express_engine: ^3.19.0
+  agora_rtc_engine: ^6.5.3
 
 dev_dependencies:
   flutter_test:

@@ -7,8 +7,8 @@ import 'package:on_peace/core/providers/theme_provider.dart';
 import 'package:on_peace/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:on_peace/features/app/splash/splash_screen.dart';
+import 'package:on_peace/screens/calls/controller/call_provider.dart';
 import 'package:on_peace/screens/calls/screen/incoming_call_overlay.dart';
-import 'package:on_peace/screens/calls/service/zego_engine_service.dart';
 
 void main() {
   runZonedGuarded(
@@ -17,9 +17,6 @@ void main() {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
-
-      await ZegoEngineService().initializeZego();
-
       runApp(const ProviderScope(child: MyApp()));
     },
     (error, stack) {
@@ -33,17 +30,14 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final callState = ref.watch(callControllerProvider);
     final themeMode = ref.watch(appThemeProvider);
 
     return MaterialApp(
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'OnPeace',
-      navigatorKey: navigatorKey,
       themeMode: themeMode,
-      builder: (context, child) {
-        if (child == null) return const SizedBox.shrink();
-        return IncomingCallOverlay(child: child);
-      },
       theme: ThemeData.light().copyWith(
         scaffoldBackgroundColor: Colors.white,
         appBarTheme: const AppBarTheme(
@@ -57,6 +51,15 @@ class MyApp extends ConsumerWidget {
         scaffoldBackgroundColor: backgroundColor,
       ),
       home: const SplashScreen(),
+      builder: (context, child) {
+        return Stack(
+          children: [
+            child ?? const SizedBox(),
+            if (callState.incomingCall != null)
+              const Positioned.fill(child: IncomingCallScreen()),
+          ],
+        );
+      },
     );
   }
 }

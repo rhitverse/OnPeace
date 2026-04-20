@@ -1,45 +1,41 @@
 import 'package:on_peace/models/call_model.dart';
 
 class CallState {
-  final String currentCallId;
-  final String? remoteUid;
-  final bool isVideoOn;
-  final bool isMuted;
   final bool isCallActive;
+  final bool isMuted;
+  final bool isVideoOn;
+  final int? remoteUid;
   final CallModel? incomingCall;
-  final String channelName;
+  final String currentCallId;
 
   const CallState({
-    this.currentCallId = '',
-    this.remoteUid,
-    this.isVideoOn = false,
-    this.isMuted = false,
     this.isCallActive = false,
+    this.isMuted = false,
+    this.isVideoOn = true,
+    this.remoteUid,
     this.incomingCall,
-    this.channelName = '',
+    this.currentCallId = '',
   });
 
   CallState copyWith({
-    String? currentCallId,
-    String? remoteUid,
-    bool? isVideoOn,
-    bool? isMuted,
     bool? isCallActive,
+    bool? isMuted,
+    bool? isVideoOn,
+    int? remoteUid,
     CallModel? incomingCall,
-    String? channelName,
+    String? currentCallId,
     bool clearRemoteUid = false,
     bool clearIncomingCall = false,
   }) {
     return CallState(
-      currentCallId: currentCallId ?? this.currentCallId,
-      remoteUid: clearRemoteUid ? null : (remoteUid ?? this.remoteUid),
-      isVideoOn: isVideoOn ?? this.isVideoOn,
-      isMuted: isMuted ?? this.isMuted,
       isCallActive: isCallActive ?? this.isCallActive,
+      isMuted: isMuted ?? this.isMuted,
+      isVideoOn: isVideoOn ?? this.isVideoOn,
+      remoteUid: clearRemoteUid ? null : remoteUid ?? this.remoteUid,
       incomingCall: clearIncomingCall
           ? null
-          : (incomingCall ?? this.incomingCall),
-      channelName: channelName ?? this.channelName,
+          : incomingCall ?? this.incomingCall,
+      currentCallId: currentCallId ?? this.currentCallId,
     );
   }
 }

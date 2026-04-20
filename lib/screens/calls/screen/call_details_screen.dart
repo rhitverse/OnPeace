@@ -1,18 +1,13 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:on_peace/colors.dart';
-import 'package:on_peace/models/call_model.dart';
-import 'package:on_peace/screens/calls/controller/call_provider.dart';
+import 'package:on_peace/info.dart';
 
-class CallDetailsScreen extends ConsumerWidget {
+class CallDetailsScreen extends StatelessWidget {
   const CallDetailsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
-
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: AppBar(
@@ -27,183 +22,78 @@ class CallDetailsScreen extends ConsumerWidget {
         actions: [
           IconButton(
             onPressed: () {},
-            icon: const Icon(
-              Icons.more_vert_outlined,
-              size: 27,
-              color: whiteColor,
-            ),
+            icon: Icon(Icons.more_vert_outlined, size: 27, color: whiteColor),
           ),
         ],
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        // Keep query index-free; filter and sort in app.
-        stream: FirebaseFirestore.instance
-            .collection('calls')
-            .limit(300)
-            .snapshots(),
-        builder: (context, snapshot) {
-          // ── Loading ──
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: uiColor),
-            );
-          }
+      body: Transform.translate(
+        offset: Offset(0, -2),
+        child: ListView(
+          children: [
+            const SizedBox(height: 8),
 
-          // ── Error ──
-          if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                'Error: ${snapshot.error}',
-                style: const TextStyle(color: Colors.white60),
-              ),
-            );
-          }
+            Transform.translate(
+              offset: Offset(0, -6),
+              child: ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: info.length,
+                itemBuilder: (context, index) {
+                  final user = info[index];
+                  final bool isMissed = index % 3 == 1;
 
-          // ── Empty ──
-          final allDocs = snapshot.data?.docs ?? [];
-          final calls =
-              allDocs
-                  .map(
-                    (d) => CallModel.fromMap(d.data() as Map<String, dynamic>),
-                  )
-                  .where(
-                    (call) =>
-                        call.callerId == currentUserId ||
-                        call.receiverId == currentUserId,
-                  )
-                  .toList()
-                ..sort((a, b) {
-                  final aTime =
-                      a.startTime ?? DateTime.fromMillisecondsSinceEpoch(0);
-                  final bTime =
-                      b.startTime ?? DateTime.fromMillisecondsSinceEpoch(0);
-                  return bTime.compareTo(aTime);
-                });
-
-          if (calls.isEmpty) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.call, color: Colors.white30, size: 60),
-                  SizedBox(height: 12),
-                  Text(
-                    'Koi call history nahi',
-                    style: TextStyle(color: Colors.white38, fontSize: 16),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          // ── Call List ──
-          return ListView.builder(
-            itemCount: calls.length,
-            itemBuilder: (context, index) {
-              final call = calls[index];
-
-              final bool isMissed =
-                  call.status == 'rejected' ||
-                  call.status == 'missed' ||
-                  call.status == 'ringing';
-
-              final bool isOutgoing = call.callerId == currentUserId;
-              final String displayName = isOutgoing
-                  ? call.receiverId
-                  : call.callerName;
-
-              String timeText = '';
-              if (call.startTime != null) {
-                final now = DateTime.now();
-                final diff = now.difference(call.startTime!);
-                if (diff.inDays == 0) {
-                  timeText =
-                      '${call.startTime!.hour.toString().padLeft(2, '0')}:${call.startTime!.minute.toString().padLeft(2, '0')}';
-                } else if (diff.inDays == 1) {
-                  timeText = 'Yesterday';
-                } else {
-                  timeText =
-                      '${call.startTime!.day}/${call.startTime!.month}/${call.startTime!.year}';
-                }
-              }
-
-              return ListTile(
-                contentPadding: const EdgeInsets.only(left: 16, right: 6),
-                leading: CircleAvatar(
-                  radius: 25,
-                  backgroundColor: Colors.grey.shade700,
-                  child: const Icon(Icons.person, color: Colors.white),
-                ),
-                title: Text(
-                  displayName,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w400,
-                    fontSize: 14.5,
-                    color: isMissed ? Colors.red : whiteColor,
-                  ),
-                ),
-                subtitle: Row(
-                  children: [
-                    // ── Call Direction Icon ──
-                    Icon(
-                      isMissed
-                          ? Icons.call_missed
-                          : isOutgoing
-                          ? Icons.call_made
-                          : Icons.call_received,
-                      size: 16,
-                      color: isMissed ? Colors.red : Colors.grey,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      isMissed
-                          ? 'Missed'
-                          : isOutgoing
-                          ? 'Outgoing'
-                          : 'Incoming',
-                      style: const TextStyle(color: Colors.grey, fontSize: 12),
-                    ),
-                    // ── Video/Voice indicator ──
-                    if (call.isVideo) ...[
-                      const SizedBox(width: 6),
-                      const Icon(Icons.videocam, size: 14, color: Colors.grey),
-                    ],
-                  ],
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      timeText,
-                      style: const TextStyle(color: Colors.grey, fontSize: 12),
-                    ),
-                    const SizedBox(width: 8),
-                    // ── Call Back Button ──
-                    IconButton(
-                      icon: Icon(
-                        call.isVideo ? Icons.videocam : Icons.call,
-                        color: uiColor,
-                        size: 22,
+                  return ListTile(
+                    contentPadding: const EdgeInsets.only(left: 16, right: 6),
+                    leading: CircleAvatar(
+                      radius: 25,
+                      backgroundImage: NetworkImage(
+                        user['profilePic']?.toString() ?? '',
                       ),
-                      onPressed: () {
-                        // Call back karo
-                        ref
-                            .read(callControllerProvider.notifier)
-                            .startCall(
-                              receiverId: isOutgoing
-                                  ? call.receiverId
-                                  : call.callerId,
-                              isVideo: call.isVideo,
-                              context: context,
-                            );
-                      },
                     ),
-                  ],
-                ),
-              );
-            },
-          );
-        },
+                    title: Text(
+                      user['name']?.toString() ?? '',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w400,
+                        fontSize: 14.5,
+                        color: isMissed ? Colors.red : whiteColor,
+                      ),
+                    ),
+                    subtitle: Row(
+                      children: [
+                        SvgPicture.asset(
+                          isMissed
+                              ? "assets/svg/missed.svg"
+                              : "assets/svg/outgoing.svg",
+                          width: 16,
+                          height: 16,
+                          color: isMissed ? Colors.grey : Colors.grey,
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          isMissed ? "Missed" : "Outgoing",
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          user['time']?.toString() ?? '',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                    onTap: () {},
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

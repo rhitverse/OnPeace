@@ -2,132 +2,108 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:on_peace/screens/calls/controller/call_provider.dart';
 
-class IncomingCallOverlay extends ConsumerWidget {
-  final Widget child;
-  const IncomingCallOverlay({super.key, required this.child});
+class IncomingCallScreen extends ConsumerWidget {
+  const IncomingCallScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final callState = ref.watch(callControllerProvider);
-    final incomingCall = callState.incomingCall;
+    final callNotifier = ref.read(callControllerProvider.notifier);
+    final call = callState.incomingCall;
 
-    return Stack(
-      children: [
-        child,
+    if (call == null) return const SizedBox.shrink();
 
-        if (incomingCall != null)
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: Material(
-              color: Colors.transparent,
-              child: Container(
-                margin: const EdgeInsets.only(top: 40, left: 12, right: 12),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1F2C34),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.4),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+    return Scaffold(
+      backgroundColor: Colors.black87,
+      body: SafeArea(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 80),
+              child: Column(
+                children: [
+                  CircleAvatar(
+                    radius: 60,
+                    backgroundColor: Colors.grey[800],
+                    child: const Icon(
+                      Icons.person,
+                      size: 60,
+                      color: Colors.white,
                     ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    // ── Avatar ──
-                    const CircleAvatar(
-                      radius: 26,
-                      backgroundColor: Colors.grey,
-                      child: Icon(Icons.person, color: Colors.white, size: 28),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    call.callerName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
                     ),
-                    const SizedBox(width: 12),
-
-                    // ── Caller Info ──
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            incomingCall.callerName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Row(
-                            children: [
-                              Icon(
-                                incomingCall.isVideo
-                                    ? Icons.videocam
-                                    : Icons.call,
-                                color: Colors.green,
-                                size: 14,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                incomingCall.isVideo
-                                    ? 'Incoming Video Call'
-                                    : 'Incoming Voice Call',
-                                style: const TextStyle(
-                                  color: Colors.white60,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // ── DECLINE BUTTON (Red) ──
-                    GestureDetector(
-                      onTap: () {
-                        ref.read(callControllerProvider.notifier).rejectCall();
-                      },
-                      child: const CircleAvatar(
-                        radius: 24,
-                        backgroundColor: Colors.red,
-                        child: Icon(
-                          Icons.call_end,
-                          color: Colors.white,
-                          size: 22,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-
-                    // ── ACCEPT BUTTON (Green) ──
-                    GestureDetector(
-                      onTap: () {
-                        ref
-                            .read(callControllerProvider.notifier)
-                            .acceptCall(context);
-                      },
-                      child: CircleAvatar(
-                        radius: 24,
-                        backgroundColor: Colors.green.shade600,
-                        child: Icon(
-                          incomingCall.isVideo ? Icons.videocam : Icons.call,
-                          color: Colors.white,
-                          size: 22,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    call.isVideo
+                        ? 'Incoming Video Call...'
+                        : 'Incoming Voice Call...',
+                    style: const TextStyle(color: Colors.grey, fontSize: 16),
+                  ),
+                ],
               ),
             ),
-          ),
-      ],
+            Padding(
+              padding: const EdgeInsets.only(bottom: 60),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Column(
+                    children: [
+                      GestureDetector(
+                        onTap: () => callNotifier.endCall(null), // ✅ null
+                        child: const CircleAvatar(
+                          radius: 36,
+                          backgroundColor: Colors.red,
+                          child: Icon(
+                            Icons.call_end,
+                            color: Colors.white,
+                            size: 36,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Decline',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    children: [
+                      GestureDetector(
+                        onTap: () => callNotifier.acceptCall(),
+                        child: const CircleAvatar(
+                          radius: 36,
+                          backgroundColor: Colors.green,
+                          child: Icon(
+                            Icons.call,
+                            color: Colors.white,
+                            size: 36,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Accept',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

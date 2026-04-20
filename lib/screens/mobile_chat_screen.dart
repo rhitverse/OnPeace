@@ -162,26 +162,6 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
     }
   }
 
-  void _startVideoCall() {
-    ref
-        .read(callControllerProvider.notifier)
-        .startCall(
-          receiverId: widget.receiverUid,
-          isVideo: true,
-          context: context,
-        );
-  }
-
-  void _startVoiceCall() {
-    ref
-        .read(callControllerProvider.notifier)
-        .startCall(
-          receiverId: widget.receiverUid,
-          isVideo: false,
-          context: context,
-        );
-  }
-
   Future<void> _sendMessage() async {
     if (_messageController.text.trim().isEmpty) return;
 
@@ -414,7 +394,15 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
         ),
         actions: [
           GestureDetector(
-            onTap: _startVideoCall,
+            onTap: () {
+              ref
+                  .read(callControllerProvider.notifier)
+                  .startCall(
+                    receiverId: widget.receiverUid,
+                    isVideo: true,
+                    context: context,
+                  );
+            },
             child: SvgPicture.asset(
               'assets/svg/videocall.svg',
               width: 27,
@@ -424,7 +412,15 @@ class _MobileChatScreenState extends ConsumerState<MobileChatScreen> {
           ),
           const SizedBox(width: 16),
           GestureDetector(
-            onTap: _startVoiceCall,
+            onTap: () {
+              ref
+                  .read(callControllerProvider.notifier)
+                  .startCall(
+                    receiverId: widget.receiverUid,
+                    isVideo: false,
+                    context: context,
+                  );
+            },
             child: SvgPicture.asset(
               'assets/svg/call1.svg',
               width: 27,
