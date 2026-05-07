@@ -15,7 +15,7 @@ OnPeace is a real-time social messaging platform designed for seamless, low-late
 
 ---
 
-![App Screenshot](assets/appImage.jpg)
+![App Screenshot](assets/OnPeace.jpg)
 
 ---
 

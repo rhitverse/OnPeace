@@ -4,9 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:on_peace/colors.dart';
 import 'package:on_peace/common/utils/navigator_key.dart';
 import 'package:on_peace/core/providers/theme_provider.dart';
-import 'package:on_peace/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:on_peace/features/app/splash/splash_screen.dart';
+import 'package:on_peace/firebase_options.dart';
 import 'package:on_peace/screens/calls/controller/call_provider.dart';
 import 'package:on_peace/screens/calls/screen/incoming_call_overlay.dart';
 
